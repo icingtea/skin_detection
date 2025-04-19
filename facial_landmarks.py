@@ -5,7 +5,6 @@ from typing import List, Tuple
 
 class FaceDetector:
     def __init__(self):
-
         self.cascade_classifier: cv2.CascadeClassifier = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
         self.landmark_model = cv2.face.createFacemarkLBF()
         self.landmark_model.loadModel("lbfmodel.yaml")
