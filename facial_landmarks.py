@@ -36,6 +36,23 @@ class FaceDetector:
 
         return img_bgr, list(face_rectangles), face_centers, landmarks_all_faces
     
+    def mask_points(self, img_path: str, landmarks: List[np.ndarray]) -> Tuple[np.ndarray, List[np.ndarray]]:
+        img_read = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
+        img_bgr = cv2.cvtColor(img_read, cv2.COLOR_GRAY2BGR)
+
+        idxs = [18, 25, 48, 54, 36, 45, 51]
+
+        selected_pts: List[List[Tuple[int, int]]] = []
+        for lm in landmarks:
+            face_pts = []
+            for i in idxs:
+                x, y = lm[i]
+                face_pts.append((int(x), int(y)))
+                cv2.circle(img_bgr, (int(x), int(y)), 3, (0,255,255), -1)
+            selected_pts.append(face_pts)
+
+        return img_bgr, selected_pts
+
     def display(self, bgr_img: np.ndarray) -> None:
         img_rgb = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2RGB)
         plt.imshow(img_rgb)
