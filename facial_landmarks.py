@@ -9,8 +9,26 @@ class FaceDetector:
         self.landmark_model = cv2.face.createFacemarkLBF()
         self.landmark_model.loadModel("lbfmodel.yaml")
 
-    def detect(self, img_path: str) -> Tuple[np.ndarray, List[np.ndarray], List[Tuple[int, int]], List[np.ndarray]]:
+class FaceDetector:
+    def __init__(self):
+        self.cascade_classifier: cv2.CascadeClassifier = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+        self.landmark_model = cv2.face.createFacemarkLBF()
+        self.landmark_model.loadModel("lbfmodel.yaml")
 
+    def detect(self, img_path: str) -> Tuple[np.ndarray, List[np.ndarray], List[Tuple[int, int]], List[np.ndarray]]:
+        """
+        detects and highlights the location of faces and the locations of facial landmarks in a given image
+
+        IN:
+            img_path: str: relative or absolute path to the input image
+        
+        OUT:
+            img_bgr: np.ndarray: matrixlike, BGR converted image with faces highlighted
+            face_rectangles: List[np.ndarray]: list of rectangles in the format (x, y, height, width)
+            face_centers: List[Tuple[int, int]]: list of tuples containing center coordinates in the format (x, y)
+            landmarks_all_faces: List[np.ndarray]: list of n = num_faces numpy arrays each containing 68 landmark coordinates in the format [x, y]
+        """
+        
         img_read = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
         img_bgr = cv2.cvtColor(img_read, cv2.COLOR_GRAY2BGR)
 
@@ -35,7 +53,18 @@ class FaceDetector:
 
         return img_bgr, list(face_rectangles), face_centers, landmarks_all_faces
     
-    def mask_points(self, img_path: str, landmarks: List[np.ndarray]) -> Tuple[np.ndarray, List[np.ndarray]]:
+    def mask_points(self, img_path: str, landmarks: List[np.ndarray]) -> Tuple[np.ndarray, List[List[Tuple[int, int]]]]:
+        """
+        filters out and highlights critical facial landmarks given an image and a collection of all its detected landmarks
+
+        IN: 
+            img_path: str: relative or absolute path to the input image
+        
+        OUT:
+            img_bgr: np.ndarray: matrixlike, BGR converted image with intended mask points highlighted
+            selected_pts: List[List[Tuple[int, int]]]: list of n = num_faces lists containing 7 coordinates in the format (x, y) 
+        """
+
         img_read = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
         img_bgr = cv2.cvtColor(img_read, cv2.COLOR_GRAY2BGR)
 
@@ -52,8 +81,35 @@ class FaceDetector:
 
         return img_bgr, selected_pts
 
-    def display(self, bgr_img: np.ndarray) -> None:
+    def display(self, bgr_img: np.ndarray, mask_points: List[List[Tuple[int, int]]] = None, img_path: str = None) -> None:
+        """
+        displays a BGR-format image with option to also display masked facial regions.
+
+        IN:
+            bgr_img: np.ndarray: image in BGR format to be displayed
+            mask_points: Optional List[List[Tuple[int, int]]]: list of face masks to highlight (convex hulls)
+            img_path: Optional str: path to original image (needed to generate clean masked version)
+        """
+
         img_rgb = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2RGB)
         plt.imshow(img_rgb)
         plt.axis('off')
         plt.show()
+
+        if mask_points:
+            img_gray = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
+
+            img_original_bgr = cv2.cvtColor(img_gray, cv2.COLOR_GRAY2BGR)
+
+            mask = np.zeros(img_gray.shape, dtype=np.uint8)
+            for face_polygon in mask_points:
+                polygon = np.array(face_polygon, dtype=np.int32)
+                hull = cv2.convexHull(polygon)
+                cv2.fillPoly(mask, [hull], color=255)
+
+            masked_bgr = cv2.bitwise_and(img_original_bgr, img_original_bgr, mask=mask)
+            masked_rgb = cv2.cvtColor(masked_bgr, cv2.COLOR_BGR2RGB)
+
+            plt.imshow(masked_rgb)
+            plt.axis('off')
+            plt.show()
