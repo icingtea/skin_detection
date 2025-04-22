@@ -13,17 +13,18 @@ class FaceDetector:
 
     def detect(self, img_path: str) -> Tuple[np.ndarray, List[np.ndarray], List[Tuple[int, int]], List[np.ndarray]]:
         """
-        detects faces and facial landmarks in an image, and highlights them on a copy of the image
+        detects faces and 68-point landmarks in a grayscale image and draws them on a rgb copy
 
         in:
             img_path (str): path to the input image file
 
         out:
             img_rgb (np.ndarray): rgb image with face boxes, centers, and landmarks drawn
-            face_rectangles (list[np.ndarray]): list of rectangles in (x, y, w, h) format for each detected face
-            face_centers (list[tuple[int, int]]): center coordinates of each detected face as (x, y) tuples
-            landmarks_all_faces (list[np.ndarray]): list of arrays containing 68 (x, y) facial landmark points per face
+            face_rectangles (List[np.ndarray]): list of face rectangles in (x, y, w, h) format
+            face_centers (List[Tuple[int, int]]): center coordinates of each detected face
+            landmarks_all_faces (List[np.ndarray]): list of arrays of 68 (x, y) points per face
         """
+
         img_read = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
         img_rgb = cv2.cvtColor(img_read, cv2.COLOR_GRAY2RGB)
 
@@ -56,6 +57,7 @@ class FaceDetector:
         in:
             img_rgb (np.ndarray): rgb image to display
         """
+
         plt.imshow(img_rgb)
         plt.axis('off')
         plt.show()
@@ -63,16 +65,17 @@ class FaceDetector:
 class MaskHandler:
     def mask_points(self, img_path: str, landmarks: List[np.ndarray]) -> Tuple[np.ndarray, List[List[Tuple[int, int]]]]:
         """
-        selects specific facial landmarks and highlights them on the image
+        highlights 7 key landmark points on each face (brow, lips, eyes, nose tip)
 
         in:
             img_path (str): path to the input image file
-            landmarks (list[np.ndarray]): list of 68-point landmarks for each detected face
+            landmarks (List[np.ndarray]): list of 68-point landmark arrays per face
 
         out:
-            img_rgb (np.ndarray): rgb image with selected landmark points highlighted
-            selected_pts (list[list[tuple[int, int]]]): list of selected (x, y) points per face
+            img_rgb (np.ndarray): rgb image with selected points drawn
+            selected_pts (List[List[Tuple[int, int]]]): per-face list of (x, y) tuples (7 per face)
         """
+
         img_read = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
         img_rgb = cv2.cvtColor(img_read, cv2.COLOR_GRAY2RGB)
 
@@ -91,12 +94,13 @@ class MaskHandler:
 
     def display_mask(self, img_path: str, mask_pts: List[List[Tuple[int, int]]]) -> None:
         """
-        applies a convex mask to selected facial regions and displays the result
+        applies convex polygon masks to the selected facial areas and displays the result
 
         in:
-            img_path (str): path to the original grayscale image
-            mask_pts (list[list[tuple[int, int]]]): list of (x, y) coordinates to form convex hulls for each face
+            img_path (str): path to the input grayscale image
+            mask_pts (List[List[Tuple[int, int]]]): list of (x, y) points per face to mask
         """
+        
         img_gray = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
         img_original_rgb = cv2.cvtColor(img_gray, cv2.COLOR_GRAY2RGB)
 
