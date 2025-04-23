@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 class FaceDetector:
     def __init__(self):
@@ -63,82 +63,106 @@ class FaceDetector:
         plt.show()
 
 class MaskHandler:
-    def mask_points(self, img_path: str, landmarks: List[np.ndarray]) -> Tuple[np.ndarray, List[List[Tuple[int, int]]]]:
+    def mask_points(self, img_path: str, landmarks: List[np.ndarray]) -> Tuple[np.ndarray, List[Dict[str, List[Tuple[int, int]]]]]:
         """
-        highlights 7 key landmark points on each face (brow, lips, eyes, nose tip)
+        selects specific facial landmarks and highlights them on the image
 
         in:
             img_path (str): path to the input image file
-            landmarks (List[np.ndarray]): list of 68-point landmark arrays per face
+            landmarks (List[np.ndarray]): list of 68-point landmarks for each detected face
 
         out:
-            img_rgb (np.ndarray): rgb image with selected points drawn
-            selected_pts (List[List[Tuple[int, int]]]): per-face list of (x, y) tuples (7 per face)
+            img_rgb (np.ndarray): rgb image with selected landmark points highlighted
+            selected_pts (List[Dict[str, List[Tuple[int, int]]]]): list of selected (x, y) points per face, organized by region
         """
 
         img_read = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
         img_rgb = cv2.cvtColor(img_read, cv2.COLOR_GRAY2RGB)
 
-        idxs = [18, 25, 48, 54, 36, 45, 51]
+        idxs = {
+            "left half": [17, 21, 30, 31, 48],
+            "right half": [30, 22, 26, 54, 35],
+            "nose": [21, 22, 30],
+            "left eye": [36, 37, 38, 39, 40, 41],
+            "right eye": [42, 43, 44, 45, 46, 47],
+            "upper lip": [48, 49, 50, 51, 52, 53, 54, 60, 61, 62, 63, 64]
+        }
 
-        selected_pts: List[List[Tuple[int, int]]] = []
+        selected_pts = []
+
         for lm in landmarks:
-            face_pts = []
-            for i in idxs:
-                x, y = lm[i]
-                face_pts.append((int(x), int(y)))
-                cv2.circle(img_rgb, (int(x), int(y)), 3, (0, 255, 255), -1)
+            face_pts = {}
+            for key, group in idxs.items():
+                group_coordinates = [(int(lm[i][0]), int(lm[i][1])) for i in group]
+                for pt in group_coordinates:
+                    cv2.circle(img_rgb, pt, 3, (0, 255, 255), -1)
+                face_pts[key] = group_coordinates
             selected_pts.append(face_pts)
 
         return img_rgb, selected_pts
 
-    def display_mask(self, img_path: str, mask_pts: List[List[Tuple[int, int]]]) -> None:
+    def build_mask(self, img_path: str, mask_pts: List[Dict[str, List[Tuple[int, int]]]]) -> Tuple[List[np.ndarray], List[np.ndarray]]:
         """
-        applies convex polygon masks to the selected facial areas and displays the result
+        builds masks for each face by filling selected facial regions (left half, right half, and upper lip)
+        and excluding eye regions using convex hulls
 
         in:
-            img_path (str): path to the input grayscale image
-            mask_pts (List[List[Tuple[int, int]]]): list of (x, y) points per face to mask
+            img_path (str): path to the original grayscale image
+            mask_pts (List[Dict[str, List[Tuple[int, int]]]]): list of selected (x, y) coordinates per face to form convex hulls
+
+        out:
+            masks (List[np.ndarray]): grayscale masks with selected regions filled (255) and omitted regions (0)
+            masked_imgs (List[np.ndarray]): grayscale images with the masks applied, keeping only the selected regions
         """
 
-        img_gray = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
-        img_original_rgb = cv2.cvtColor(img_gray, cv2.COLOR_GRAY2RGB)
+        img_read = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
+        masks = []
+        masked_imgs = []
 
-        mask = np.zeros(img_gray.shape, dtype=np.uint8)
-        for face_polygon in mask_pts:
-            polygon = np.array(face_polygon, dtype=np.int32)
-            hull = cv2.convexHull(polygon)
-            cv2.fillPoly(mask, [hull], color=255)
+        for face in mask_pts:
+            mask = np.zeros(img_read.shape, dtype=np.uint8)
+            for key, group in face.items():
+                polygon = np.array(group, dtype=np.int32)
+                if key in ["left half", "right half", "upper lip", "nose"]:
+                    cv2.fillPoly(mask, [polygon], color=255)
+                else:
+                    hull = cv2.convexHull(polygon)
+                    cv2.fillPoly(mask, [hull], color=0)
 
-        masked_rgb = cv2.bitwise_and(img_original_rgb, img_original_rgb, mask=mask)
+            masked_img = cv2.bitwise_and(img_read, mask)
+            masked_img = cv2.cvtColor(masked_img, cv2.COLOR_GRAY2RGB)
 
-        plt.imshow(masked_rgb)
+            masks.append(mask)
+            masked_imgs.append(masked_img)
+
+        return masks, masked_imgs
+
+    def display(self, masked_img: np.ndarray) -> None:
+        """
+        displays an image
+
+        in:
+            masked_img (np.ndarray): grayscale image with the applied mask.
+        """
+        plt.imshow(masked_img)
         plt.axis('off')
         plt.show()
 
-    def get_intensity_probability_maps(self, img_path: str, mask_pts: List[List[Tuple[int, int]]]) -> Tuple[np.ndarray, List[np.ndarray]]:
+    def get_intensity_probability_maps(self, img_path: str, masks: List[np.ndarray]) -> List[np.ndarray]:
         """
         gets probablity maps for each of the faces provided via the mask_pts.
 
         in:
             img_path (str): path to input image file
-            mask_pts (List[List[Tuple[int, int]]]): list of selected (x, y) points per face
+            mask_pts (List[np.ndarray]): list of masks, one for each face.
 
         out:
-            img_rgb (np.ndarray): rgb image with each face mask colored in with an exaggerated probability distribution
             prob_maps (List[np.ndarray]): Pixel intensity histograms per face
         """
         img_gray = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
-        img_rgb = cv2.cvtColor(img_gray, cv2.COLOR_GRAY2RGB)
         prob_maps = []
-        colormap = plt.get_cmap('plasma')
 
-        for face_polygon in mask_pts:
-
-            mask = np.zeros(img_gray.shape, dtype=np.uint8)
-            polygon = np.array(face_polygon, dtype=np.int32)
-            hull = cv2.convexHull(polygon)
-            cv2.fillPoly(mask, [hull], 255)
+        for mask in masks:
 
             face_pixels = img_gray[mask == 255]
             if len(face_pixels) == 0:
@@ -146,39 +170,10 @@ class MaskHandler:
                 continue
 
             hist = cv2.calcHist([face_pixels], [0], None, [256], [0, 256])
-            hist_prob = hist / hist.sum()
-            prob_maps.append(hist_prob.flatten())
+            prob_map = hist / hist.sum()
+            prob_maps.append(prob_map.flatten())
 
-            # Visualization purposes
-            non_zero_mask = hist_prob > 0
-            if np.any(non_zero_mask):
-                non_zero_values = hist_prob[non_zero_mask]
-
-                min_prob = np.min(non_zero_values)
-                max_prob = np.max(non_zero_values)
-
-                enhanced_prob = np.zeros_like(hist_prob)
-
-                # Apply stretching to non-zero values only
-                if max_prob > min_prob:
-                    # Linear stretching from 0 to 1
-                    enhanced_prob[non_zero_mask] = (hist_prob[non_zero_mask] - min_prob) / (max_prob - min_prob)
-                else:
-                    # If only one non-zero value exists
-                    enhanced_prob[non_zero_mask] = 1.0
-            else:
-                # Fallback if no non-zero values
-                enhanced_prob = hist_prob
-
-            for intensity in range(256):
-                if hist_prob[intensity, 0] > 0:
-                    prob = enhanced_prob[intensity, 0]
-                    rgba = colormap(float(prob))
-
-                    r, g, b = [int(255 * c) for c in rgba[:3]]
-                    img_rgb[(mask == 255) and (img_gray == intensity)] = [r, g, b]
-
-        return img_rgb, prob_maps
+        return prob_maps
 
     def visualize_probability_histograms(self, prob_maps) -> None:
         """
@@ -217,3 +212,47 @@ class MaskHandler:
 
         plt.tight_layout()
         plt.show()
+
+    def apply_intensity_probablity_map(self, img_path: str, prob_map: np.ndarray) -> None:
+        """
+            Apply a single intensity probability map to an image.
+
+            in:
+                img_path (str): path to input image file
+                prob_map (np.ndarray): Intensity Probability map to apply onto image
+        """
+        img_gray = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
+        img_rgb = cv2.cvtColor(img_gray, cv2.COLOR_GRAY2RGB)
+        colormap = plt.get_cmap('plasma')
+
+        non_zero_mask = prob_map > 0
+        if np.any(non_zero_mask):
+            non_zero_values = prob_map[non_zero_mask]
+
+            min_prob = np.min(non_zero_values)
+            max_prob = np.max(non_zero_values)
+
+            enhanced_prob = np.zeros_like(prob_map)
+
+            # Apply stretching to non-zero values only
+            if max_prob > min_prob:
+                # Linear stretching from 0 to 1
+                enhanced_prob[non_zero_mask] = (prob_map[non_zero_mask] - min_prob) / (max_prob - min_prob)
+            else:
+                # If only one non-zero value exists
+                enhanced_prob[non_zero_mask] = 1.0
+        else:
+            # Fallback if no non-zero values
+            enhanced_prob = prob_map
+
+        for intensity in range(256):
+            if prob_map[intensity] > 0:
+                prob = enhanced_prob[intensity]
+                rgba = colormap(float(prob))
+
+                r, g, b = [int(255 * c) for c in rgba[:3]]
+                img_rgb[img_gray == intensity] = [r, g, b]
+
+
+        plt.imshow(img_rgb)
+        plt.axis('off')
