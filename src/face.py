@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 from typing import List, Tuple
+from pathlib import Path
 
 
 class FaceDetector:
@@ -9,10 +10,10 @@ class FaceDetector:
             cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
         )
         self.landmark_model = cv2.face.createFacemarkLBF()
-        self.landmark_model.loadModel("lbfmodel.yaml")
+        self.landmark_model.loadModel("../assets/lbfmodel.yaml")
 
     def detect(
-        self, img_path: str
+        self, img_path: Path
     ) -> Tuple[np.ndarray, List[np.ndarray], List[Tuple[int, int]], List[np.ndarray]]:
         """
         Detects faces and 68-point landmarks in a grayscale image and draws them on a rgb copy
@@ -27,7 +28,7 @@ class FaceDetector:
             landmarks_all_faces `List[np.ndarray]`: list of arrays of 68 (x, y) points per face
         """
 
-        img_read = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
+        img_read = cv2.imread(str(img_path), cv2.IMREAD_GRAYSCALE)
         img_rgb = cv2.cvtColor(img_read, cv2.COLOR_GRAY2RGB)
 
         face_rectangles = self.cascade_classifier.detectMultiScale(
