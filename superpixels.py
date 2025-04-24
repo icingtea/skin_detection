@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from typing import List, Tuple
 
+
 class SuperpixelFeatureExtractor:
     def __init__(self, region_size: int = 10, neighborhood_size: int = 3):
         """
@@ -14,9 +15,11 @@ class SuperpixelFeatureExtractor:
         """
         self.region_size = region_size
         self.neighborhood_size = neighborhood_size
-        self.algorithm = cv2.ximgproc.SLIC 
+        self.algorithm = cv2.ximgproc.SLIC
 
-    def get_slic_superpixels(self, img_path: str) -> Tuple[cv2.ximgproc.SuperpixelSLIC, np.ndarray, np.ndarray, int]:
+    def get_slic_superpixels(
+        self, img_path: str
+    ) -> Tuple[cv2.ximgproc.SuperpixelSLIC, np.ndarray, np.ndarray, int]:
         """
         computes superpixels using the SLIC algorithm and returns the results
 
@@ -46,7 +49,9 @@ class SuperpixelFeatureExtractor:
 
         return slic, contoured_img, slic.getLabels(), slic.getNumberOfSuperpixels()
 
-    def basic_superpixel_features(self, img_path: str, slic_superpixels: cv2.ximgproc.SuperpixelSLIC) -> List[dict]:
+    def basic_superpixel_features(
+        self, img_path: str, slic_superpixels: cv2.ximgproc.SuperpixelSLIC
+    ) -> List[dict]:
         """
         extracts basic features (mean intensity, std intensity, entropy) for each superpixel
 
@@ -83,17 +88,21 @@ class SuperpixelFeatureExtractor:
                     y_min, y_max = max(j - r, 0), min(j + r + 1, img.shape[1])
                     neighborhood = img[x_min:x_max, y_min:y_max]
 
-                    hist, _ = np.histogram(neighborhood, bins=256, range=(0, 256), density=True)
+                    hist, _ = np.histogram(
+                        neighborhood, bins=256, range=(0, 256), density=True
+                    )
                     entropy_map[i, j] = -np.sum(hist * np.log(hist + 1e-7))
 
             mean_entropy = np.mean(entropy_map[labels == label])
 
-            features.append({
-                'label': label,
-                'mean_intensity': mean_intensity,
-                'std_intensity': std_intensity,
-                'entropy': mean_entropy
-            })
+            features.append(
+                {
+                    "label": label,
+                    "mean_intensity": mean_intensity,
+                    "std_intensity": std_intensity,
+                    "entropy": mean_entropy,
+                }
+            )
 
         return features
 
@@ -105,5 +114,5 @@ class SuperpixelFeatureExtractor:
             contoured_img (np.ndarray): RGB image with overlaid superpixel contours
         """
         plt.imshow(contoured_img)
-        plt.axis('off')
+        plt.axis("off")
         plt.show()

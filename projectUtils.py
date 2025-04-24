@@ -1,0 +1,107 @@
+import cv2
+import numpy as np
+from typing import List
+from pathlib import Path
+from matplotlib import pyplot as plt
+
+
+class Utils:
+    EPSILON = 1e-9
+
+    @staticmethod
+    def display(img: np.ndarray, title: str = None) -> None:
+        """
+        Display an image
+
+        in:
+            img: (`np.ndarray`): The image to display
+            title: (`str`) [DEFAULT `None`]: self explanatory
+        """
+
+        plt.imshow(img)
+        plt.axis("off")
+        if title:
+            plt.title(title)
+        plt.show()
+
+    @staticmethod
+    def visualize_histograms(histograms: List[np.ndarray]) -> None:
+        """
+        Visualize a list of histograms
+
+        in:
+            histograms: (`List[np.ndarray]`): The list of histograms
+        """
+
+        n_maps = len(histograms)
+        _, axes = plt.subplots(n_maps, 1, figsize=(10, 3 * n_maps))
+
+        if n_maps == 1:
+            axes = [axes]
+
+        for i, hist in enumerate(histograms):
+            x = np.arange(256)
+            axes[i].bar(x, hist, color="blue", alpha=0.7)
+            axes[i].set_title(f"Probability Distribution - Mask {i+1}")
+            axes[i].set_xlabel("Pixel Intensity")
+            axes[i].set_ylabel("Probability")
+
+            non_zero = hist[hist > 0]
+            if len(non_zero) > 0:
+                max_prob = np.max(hist)
+                mean = np.sum(x * hist) / np.sum(hist)
+                axes[i].text(
+                    0.02,
+                    0.95,
+                    f"Max Probability: {max_prob:.4f}\nMean: {mean:.1f}",
+                    transform=axes[i].transAxes,
+                    verticalalignment="top",
+                    bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+                )
+
+        plt.tight_layout()
+        plt.show()
+
+    @staticmethod
+    def apply_intensity_probability_map(
+        img_path: Path, intensity_histogram: np.ndarray
+    ) -> None:
+        """
+        Apply a single intensity histogram to an image
+
+        in:
+            img_path: `Path`: Path to input image
+            intensity_histogram: `np.ndarray`: Intensity Histogram to apply
+        """
+        img_gray = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
+        img_rgb = cv2.cvtColor(img_gray, cv2.COLOR_GRAY2RGB)
+        colormap = plt.get_cmap("plasma")
+
+        non_zero_mask = intensity_histogram > 0
+        if np.any(non_zero_mask):
+            non_zero_values = intensity_histogram[non_zero_mask]
+
+            min_prob = np.min(non_zero_values)
+            max_prob = np.max(non_zero_values)
+
+            enhanced_prob = np.zeros_like(intensity_histogram)
+
+            # Apply stretching to non-zero values only
+            if max_prob > min_prob:
+                enhanced_prob[non_zero_mask] = (
+                    intensity_histogram[non_zero_mask] - min_prob
+                ) / (max_prob - min_prob)
+            else:
+                enhanced_prob[non_zero_mask] = 1.0
+        else:
+            enhanced_prob = intensity_histogram
+
+        for intensity in range(256):
+            if intensity_histogram[intensity] > 0:
+                prob = enhanced_prob[intensity]
+                rgba = colormap(float(prob))
+
+                r, g, b = [int(255 * c) for c in rgba[:3]]
+                img_rgb[img_gray == intensity] = [r, g, b]
+
+        Utils.display(img_rgb)
