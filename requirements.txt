@@ -3,3 +3,5 @@ numpy
 matplotlib
 shapely
 scikit-image
+requests
+py7zr
