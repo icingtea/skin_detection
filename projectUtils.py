@@ -9,7 +9,7 @@ class Utils:
     EPSILON = 1e-9
 
     @staticmethod
-    def display(img: np.ndarray, title: str = None) -> None:
+    def display(img: np.ndarray, title: str | None = None, cmap: str | None = None) -> None:
         """
         Display an image
 
@@ -18,7 +18,7 @@ class Utils:
             title: (`str`) [DEFAULT `None`]: self explanatory
         """
 
-        plt.imshow(img)
+        plt.imshow(img, cmap=cmap)
         plt.axis("off")
         if title:
             plt.title(title)
