@@ -4,6 +4,9 @@ import numpy as np
 class FeatureDivergence:
     @staticmethod
     def get_divergence(feature_vector_1: Dict, feature_vector_2: Dict) -> float:
+        feature_vector_1.pop('label', None)
+        feature_vector_2.pop('label', None)
+        
         if not (len(feature_vector_1.keys()) == len(feature_vector_2.keys())):
             raise ValueError("Keys are not the same across feature vectors")
         
@@ -28,6 +31,6 @@ class FeatureDivergence:
         elif type(val1) == np.ndarray:
             if val1.shape != val2.shape:
                 raise ValueError(f"Shape mismatch in arrays: {val1.shape} != {val2.shape}")
-            return np.linalg.norm(val1 - val2)
+            return float(np.linalg.norm(val1 - val2))
         else:
             raise ValueError(f"Unknown type. {type(val1)}")

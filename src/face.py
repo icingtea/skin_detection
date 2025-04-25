@@ -5,12 +5,12 @@ from pathlib import Path
 
 
 class FaceDetector:
-    def __init__(self):
+    def __init__(self, model_path: str = "/assets/lbfmodel.yaml"):
         self.cascade_classifier: cv2.CascadeClassifier = cv2.CascadeClassifier(
             cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
         )
         self.landmark_model = cv2.face.createFacemarkLBF()
-        self.landmark_model.loadModel("assets/lbfmodel.yaml")
+        self.landmark_model.loadModel(model_path)
 
     def detect(
         self, img_path: Path
