@@ -3,7 +3,7 @@ import os
 import requests
 import py7zr
 import time
-from face import FaceDetector
+from src.face import FaceDetector
 
 DATASET_URL_DROPBOX = "https://www.dropbox.com/s/hgixfsj2ea8qwrq/helenstar_release.7z?dl=1"
 DATA_DIR = "./dataset"
