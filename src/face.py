@@ -10,7 +10,7 @@ class FaceDetector:
             cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
         )
         self.landmark_model = cv2.face.createFacemarkLBF()
-        self.landmark_model.loadModel("../assets/lbfmodel.yaml")
+        self.landmark_model.loadModel("assets/lbfmodel.yaml")
 
     def detect(
         self, img_path: Path

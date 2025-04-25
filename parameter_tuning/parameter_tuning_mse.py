@@ -6,8 +6,8 @@ import functools
 import optuna
 import tqdm
 
-from face import FaceDetector
-from mask import MaskHandler
+from src.face import FaceDetector
+from src.mask import MaskHandler
 
 DATA_DIR = Path("../dataset")
 MIDDLE_DIR_NAME = 'helenstar_release'

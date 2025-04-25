@@ -5,3 +5,4 @@ shapely
 scikit-image
 requests
 py7zr
+optuna
