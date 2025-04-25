@@ -1,0 +1,4 @@
+2025-04-25 07:33:38 - Trial 2050 finished. Value: 0.095395. Params: {'alpha': 0.86405022434344, 'lambda_': 0.0006891343494106327}. Best value so far: 0.095324
+2025-04-25 07:41:32 - Trial 2100 finished. Value: 0.095388. Params: {'alpha': 0.8733489229290684, 'lambda_': 0.0007164514275715769}. Best value so far: 0.095324
+2025-04-25 07:49:15 - Trial 2150 finished. Value: 0.096475. Params: {'alpha': 0.804999735491113, 'lambda_': 0.0005961140002976265}. Best value so far: 0.095324
+2025-04-25 07:57:04 - Trial 2200 finished. Value: 0.095412. Params: {'alpha': 0.8851773188792857, 'lambda_': 0.0006174988170846915}. Best value so far: 0.095324
