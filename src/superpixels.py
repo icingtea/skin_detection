@@ -4,7 +4,11 @@ from pathlib import Path
 from skimage.filters.rank import entropy
 from skimage.morphology import disk
 from skimage.feature import local_binary_pattern
-from typing import List, Dict
+from typing import List, Dict, Tuple
+
+from src.projectUtils import Utils
+from src.region import FeatureDivergence
+
 
 class SuperpixelExtractor:
     def __init__(self, region_size: int = 10, neighborhood_size: int = 3):
@@ -223,3 +227,96 @@ class FeatureExtractor:
             "entropy": mean_entropy,
             "lacunarity_vector": np.array(lacunarity_vector),
         }
+
+    def calculate_feature_learned_probability(self,
+            all_superpixel_features: List[Dict],
+            initial_seed_feature: Dict
+    ) -> Tuple[List[Dict], Dict]:
+        """
+        calculates learned probability for the features in each superpixel, based on distance to initial seed features
+
+        in:
+            all_superpixel_features: (list[Dict]): list of features for every superpixel
+            initial_seed_features (dict): average features for initial seed region
+
+        out:
+            list[Dict]: list of learned probability for each feature per superpixel
+        """
+
+        num_superpixels = len(all_superpixel_features)
+
+        expected_feature_keys = ['mean_intensity', 'std_intensity', 'entropy', 'lacunarity_vector']
+
+        distances = {key: [] for key in expected_feature_keys}
+
+        seed_features_copy = initial_seed_feature.copy()
+
+        for features in all_superpixel_features:
+            features_copy = features.copy()
+            dist_dict = FeatureDivergence.get_divergence(features_copy, seed_features_copy)
+
+            for key in expected_feature_keys:
+                distances[key].append(dist_dict[key])
+
+        norm_params = {}
+        for key in expected_feature_keys:
+            curr_distances = distances[key]
+
+            min_d = np.min(curr_distances)
+            max_d = np.max(curr_distances)
+            range_d = max_d - min_d + Utils.EPSILON
+
+            norm_params[key] = {'min': min_d, 'range': max_d}
+
+        feature_probabilities = []
+
+        for i in range(num_superpixels):
+            label = all_superpixel_features[i]['label']
+            probs = {'label': label}
+
+            for key in expected_feature_keys:
+                dist = distances[key][i]
+                p = norm_params[key]
+
+                clamped_dist = np.clip(dist, p['min'], p['min'] + p['range'] - Utils.EPSILON)
+                normalised_dist = (clamped_dist - p['min'] / p['range'])
+
+                probs[key] = Utils.phi_k(normalised_dist)
+
+            feature_probabilities.append(probs)
+
+        return feature_probabilities, norm_params
+
+
+    def calculate_combined_probability(self,
+        individual_feature_probabilities: List[Dict]
+    ) -> List[Dict]:
+        """
+        calculates combined initial prob for every superpixel by multiplying individual feature probabilities
+
+        in:
+            individual_feature_probabilities (list[Dict]): list of feature probabilities for each superpixel
+
+        out:
+            List[Dict]: list with each item containing label of the superpixel and it's combined initial probability
+        """
+
+        combined_probabilities = []
+
+        probability_value_keys = ['mean_intensity', 'std_intensity', 'entropy', 'lacunarity_vector']
+
+        for prob_dict in individual_feature_probabilities:
+            label = prob_dict.get('label')
+
+            p = 1.0
+            keys_found = 0
+
+            for pk in probability_value_keys:
+                prob_value = prob_dict.get(pk)
+                p *= prob_value
+                keys_found += 1
+
+            p_clipped = float(np.clip(p, 0.0, 1.0))
+            combined_probabilities.append({'label': label, 'p': p_clipped})
+
+        return combined_probabilities

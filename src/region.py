@@ -1,9 +1,9 @@
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Any
 import numpy as np
 
 class FeatureDivergence:
     @staticmethod
-    def get_divergence(feature_vector_1: Dict, feature_vector_2: Dict) -> float:
+    def get_divergence(feature_vector_1: Dict, feature_vector_2: Dict) -> dict[Any, float]:
         feature_vector_1.pop('label', None)
         feature_vector_2.pop('label', None)
         
