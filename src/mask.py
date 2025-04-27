@@ -26,8 +26,8 @@ class MaskHandler:
         img_rgb = cv2.cvtColor(img_read, cv2.COLOR_GRAY2RGB)
 
         idxs = {
-            "left half": [17, 21, 30, 31, 48],
-            "right half": [30, 22, 26, 54, 35],
+            "left half": [17, 21, 30, 31, 48, 3],
+            "right half": [30, 22, 26, 13, 54, 35],
             "nose": [21, 22, 30],
             "left eye": [36, 37, 38, 39, 40, 41],
             "right eye": [42, 43, 44, 45, 46, 47],
