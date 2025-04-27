@@ -71,11 +71,17 @@ class MaskHandler:
             mask = np.zeros(img_read.shape, dtype=np.uint8)
             for key, group in face.items():
                 polygon = np.array(group, dtype=np.int32)
-                if key in ["left half", "right half", "upper lip", "nose"]:
+                if key in ['left half', 'right half', 'nose']:
                     cv2.fillPoly(mask, [polygon], color=255)
-                else:
-                    hull = cv2.convexHull(polygon)
-                    cv2.fillPoly(mask, [hull], color=0)
+                elif key in ['left eye', 'right eye', 'upper lip']:
+                    if key in ['left eye', 'right eye']:
+                        if len(polygon) > 3:
+                            hull = cv2.convexHull(polygon)
+                            cv2.fillPoly(mask, [hull], color=0)
+                        else:
+                            cv2.fillPoly(mask, [polygon], color=0)
+                    else:
+                        cv2.fillPoly(mask, [polygon], color=0)
 
             masked_img = cv2.bitwise_and(img_read, mask)
             masked_img = cv2.cvtColor(masked_img, cv2.COLOR_GRAY2RGB)

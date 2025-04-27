@@ -52,21 +52,29 @@ class RegionGrower:
         p_node_map = {item['label']: item['initial_combined_prob'] for item in initial_combined_probs}
         all_valid_labels = set(features_dict.keys())
 
-        adjacency_list = self._get_superpixel_neighbours(labels)
-        threshold_tf = self._calculate_threshold_tf(initial_combined_probs, seed_mask_labels)
+        valid_seed_labels = {lbl for lbl in seed_mask_labels if lbl in all_valid_labels and lbl in p_node_map}
+        if len(valid_seed_labels) != len(seed_mask_labels):
+            print("seed labels invalid or missing features/p_node")
+        if not valid_seed_labels:
+            print("no valid seed labels remain")
+            return set()
 
-        current_skin_labels = set()
+        print(f"region growing with {len(valid_seed_labels)} initial seed labels")
+        current_skin_labels = valid_seed_labels.copy()
+        processed_labels = valid_seed_labels.copy()
         candidate_queue = deque()
-        processed_labels = set()
 
-        for label in all_valid_labels:
-            p_node = p_node_map.get(label)
-            if p_node > threshold_tf:
-                current_skin_labels.add(label)
-                processed_labels.add(label)
-                for neighbor in adjacency_list.get(label):
-                    if neighbor in all_valid_labels and neighbor not in processed_labels and neighbor not in candidate_queue:
+        adjacency_list = self._get_superpixel_neighbours(labels)
+        threshold_tf = self._calculate_threshold_tf(initial_combined_probs, valid_seed_labels)
+
+        for label in current_skin_labels:
+            if label not in adjacency_list: continue
+            for neighbor in adjacency_list.get(label):
+                if neighbor in all_valid_labels and neighbor not in processed_labels:
+                    if neighbor not in candidate_queue:
                         candidate_queue.append(neighbor)
+
+                    processed_labels.add(neighbor)
 
         iterations = 0
         added_in_iteration = True
@@ -74,52 +82,80 @@ class RegionGrower:
         while candidate_queue and iterations < self.max_iters and added_in_iteration:
             iterations += 1
             added_in_iteration = False
-
             level_size = len(candidate_queue)
 
             for _ in range(level_size):
                 current_label = candidate_queue.popleft()
 
-                processed_labels.add(current_label)
-
                 current_features = features_dict.get(current_label)
+                if current_features is None:
+                    continue
+
                 p_node = p_node_map.get(current_label)
-                skin_neighbors = adjacency_list.get(current_label, set()) & current_skin_labels
+
+                if current_label not in adjacency_list: continue
+
+                skin_neighbors = (adjacency_list.get(current_label) & current_skin_labels) & all_valid_labels
+
                 p_edge = 1.0
 
                 if not skin_neighbors:
                     p_edge = self.p_edge_if_no_neighbours
                 else:
+                    calculated_p_edge = 1.0
+                    features_contributed_count = 0
+
                     for key in self.feature_keys:
+                        current_feat_val = current_features.get(key)
+                        if current_feat_val is None: continue
+
                         distance_to_neighbors = []
-                        current_feat_val = current_features[key]
+                        valid_neighbor_features = 0
+
                         for neighbor_label in skin_neighbors:
-                            neighbor_features = features_dict[neighbor_label]
-                            neighbor_feat_val = neighbor_features[key]
-                            dist = FeatureDivergence.euclidean_distance(current_feat_val, neighbor_feat_val)
-                            distance_to_neighbors.append(dist)
+                            neighbor_features = features_dict.get(neighbor_label)
+                            if neighbor_features is None: continue
+
+                            neighbor_feat_val = neighbor_features.get(key)
+                            if neighbor_feat_val is None: continue
+
+                            try:
+                                dist = FeatureDivergence.euclidean_distance(current_feat_val, neighbor_feat_val)
+                                distance_to_neighbors.append(dist)
+                                valid_neighbor_features += 1
+                            except ValueError:
+                                pass
+
+                        if not distance_to_neighbors: continue
 
                         avg_dist = np.mean(distance_to_neighbors)
-
                         p = norm_params.get(key)
-                        clamped_avg_dist = np.clip(avg_dist, p['min'], p['min'] + p['range'] - Utils.EPSILON)
-                        normalised_avg_dist = (clamped_avg_dist - p['min']) / p['range'] if p['range'] > Utils.EPSILON else 0
+                        if p is None: continue
 
-                        phi_k_avg_dist = Utils.phi_k(normalised_avg_dist)
-                        p_edge *= (phi_k_avg_dist + Utils.EPSILON)
+                        clamped_avg_distance = np.clip(avg_dist, p['min'], p['min'] + p['range'])
+                        normalised_avg_distance = (clamped_avg_distance - p['min']) / p['range'] if p['range'] > Utils.EPSILON else 0.0
 
-                    p_edge = np.clip(p_edge, 0.0, 1.0)
+                        phi_k_avg_dist = Utils.phi_k(normalised_avg_distance)
+                        calculated_p_edge *= (phi_k_avg_dist + Utils.EPSILON)
+                        features_contributed_count += 1
+
+                    if features_contributed_count > 0:
+                        p_edge = np.clip(calculated_p_edge, 0.0, 1.0)
 
                 p_new = p_node * p_edge
 
                 if p_new > threshold_tf:
                     current_skin_labels.add(current_label)
-                    add_in_iteration = True
+                    added_in_iteration = True
 
                     for neighbor in adjacency_list.get(current_label):
-                        if neighbor in all_valid_labels and neighbor not in processed_labels and neighbor not in candidate_queue:
-                            candidate_queue.append(neighbor)
+                        if neighbor in all_valid_labels and neighbor not in processed_labels:
+                            if neighbor not in candidate_queue:
+                                candidate_queue.append(neighbor)
+                            processed_labels.add(neighbor)
 
         return current_skin_labels
+
+
 
 
