@@ -228,7 +228,7 @@ class FeatureExtractor:
 
         lacunarity_vector = []
         for (p, r) in self.p_r_values:
-            lbp_map = local_binary_pattern(img, p, r, method="uniform")
+            lbp_map = self.extract_lbp_riu_maps(img, p, r)
             masked_lbp = lbp_map[mask]
 
             for k in self.k_values[p]:
