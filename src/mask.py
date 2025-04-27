@@ -34,11 +34,33 @@ class MaskHandler:
             "upper lip": [48, 49, 50, 51, 52, 53, 54, 60, 61, 62, 63, 64],
         }
 
+        new_idxs = {
+            # Skin regions to INCLUDE (will be filled with 255)
+            # Glabella - using points that are usually stable
+            "forehead_glabella": [27, 21, 22],  # Top of nose bridge, inner eyebrow points
+
+            # Expanded Cheeks - include points below the eye
+            # Points Ref: 36=L outer eye, 4=L under eye, 31=L nose side, 48=L lip corner, 2=L jaw
+            #             45=R outer eye, 12=R under eye, 35=R nose side, 54=R lip corner, 14=R jaw
+            "left_cheek_expanded": [36, 4, 31, 48, 2],  # Added point 4 (under eye)
+            "right_cheek_expanded": [45, 12, 35, 54, 14],  # Added point 12 (under eye)
+
+            # Regions to EXCLUDE (will be filled with 0) - Keep these the same
+            "left_eye": [36, 37, 38, 39, 40, 41],
+            "right_eye": [42, 43, 44, 45, 46, 47],
+            "mouth_area": [48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67],
+            # Explicitly exclude eyebrows just in case landmarks shift
+            "left_eyebrow": [17, 18, 19, 20, 21],
+            "right_eyebrow": [22, 23, 24, 25, 26],
+            # Exclude nostrils/nose tip
+            "nose_tip_nostrils": [31, 32, 33, 34, 35],
+        }
+
         selected_pts = []
 
         for lm in landmarks:
             face_pts = {}
-            for key, group in idxs.items():
+            for key, group in new_idxs.items():
                 group_coordinates = [(int(lm[i][0]), int(lm[i][1])) for i in group]
                 for pt in group_coordinates:
                     cv2.circle(img_rgb, pt, 3, (0, 255, 255), -1)
@@ -68,6 +90,7 @@ class MaskHandler:
         masked_imgs = []
 
         for face in mask_pts:
+            """
             mask = np.zeros(img_read.shape, dtype=np.uint8)
             for key, group in face.items():
                 polygon = np.array(group, dtype=np.int32)
@@ -82,6 +105,32 @@ class MaskHandler:
                             cv2.fillPoly(mask, [polygon], color=0)
                     else:
                         cv2.fillPoly(mask, [polygon], color=0)
+
+            """
+
+            inclusion_keys = ["forehead_glabella", "left_cheek_expanded", "right_cheek_expanded"]
+            exclusion_keys = ["left_eye", "right_eye", "mouth_area", "left_eyebrow", "right_eyebrow",
+                              "nose_tip_nostrils"]
+
+            mask = np.zeros(img_read.shape, dtype=np.uint8)
+            for key, group in face.items():
+                if not group or len(group) < 3:
+                    continue
+                polygon = np.array(group, dtype=np.int32)
+
+                if key in ["forehead_glabella", "left_cheek_expanded", "right_cheek_expanded"]:
+                    try:
+                        hull = cv2.convexHull(polygon)
+                        cv2.fillPoly(mask, [hull], color=255)
+                    except Exception as e:
+                        print(f"error filling polygon for key {key}: {e}")
+
+                elif key in ["left_eye", "right_eye", "mouth_area"]:
+                    try:
+                        hull = cv2.convexHull(polygon)
+                        cv2.fillPoly(mask, [hull], color=0)
+                    except Exception as e:
+                        print(f"convex hull failed for key {key}")
 
             masked_img = cv2.bitwise_and(img_read, mask)
             masked_img = cv2.cvtColor(masked_img, cv2.COLOR_GRAY2RGB)

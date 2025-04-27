@@ -10,7 +10,7 @@ from src.region import FeatureDivergence
 
 class RegionGrower:
 
-    def __init__(self, kappa: float = 0.85, max_iters: int = 10, p_edge_if_no_neighbours: float = 0.5):
+    def __init__(self, kappa: float = 0.85, max_iters: int = 2000, p_edge_if_no_neighbours: float = 0.5):
         self.kappa = kappa
         self.max_iters = max_iters
         self.p_edge_if_no_neighbours = p_edge_if_no_neighbours

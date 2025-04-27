@@ -153,6 +153,57 @@ class Utils:
                 return 1.0 if x < EPSILON else 0.5
 
     @staticmethod
+    def phi_k_standard_sigmoid(normalized_distance: float, steepness: float = 10.0, midpoint: float = 0.5) -> float:
+        """
+        Converts normalized distance to probability using a standard sigmoid curve
+        adjusted for distance: P = 1 / (1 + exp(k * (x - m))).
+
+        Maps distance `x` typically in [0, 1] (or higher) to probability in [0, 1].
+        - Probability approaches 1 as distance approaches 0.
+        - Probability is 0.5 at distance = midpoint.
+        - Probability approaches 0 as distance increases significantly beyond midpoint.
+
+        Args:
+            normalized_distance (float): The distance x, typically scaled to [0, 1+].
+                                         Must be non-negative.
+            steepness (float): Controls how sharp the probability transition is.
+                               Higher values mean a sharper drop. Default: 10.0.
+            midpoint (float): The normalized distance value at which probability crosses 0.5.
+                              Should typically be within the expected range of normalized distances
+                              that represent "somewhat dissimilar". Default: 0.5.
+
+        Returns:
+            float: Probability value between 0.0 and 1.0.
+        """
+        # Ensure distance is non-negative
+        x = max(0.0, normalized_distance)
+
+        try:
+            # Calculate the exponent term: k * (x - m)
+            exponent_term = steepness * (x - midpoint)
+
+            # Calculate sigmoid: 1 / (1 + exp(exponent_term))
+            # Use np.float64 for precision, especially with large exponents
+            exp_val = np.exp(np.float64(exponent_term))
+
+            # Handle potential overflow if exp_val becomes massive (very dissimilar distance)
+            if np.isinf(exp_val):
+                probability = 0.0
+            else:
+                probability = 1.0 / (1.0 + exp_val)
+
+            # Clip final result just in case of numerical nuances
+            return float(np.clip(probability, 0.0, 1.0))
+
+        except OverflowError:
+            # Occurs if exponent_term is extremely large (highly dissimilar)
+            return 0.0
+        except Exception as e:
+            print(f"Warning: Exception in phi_k_standard_sigmoid for x={x}: {e}")
+            # Return a low probability on error
+            return 0.0
+
+    @staticmethod
     def morphological_cleanup(
         img: np.ndarray,
         kernel_shape: int = cv2.MORPH_ELLIPSE,
