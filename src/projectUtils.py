@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from typing import List
+from typing import List, Tuple
 from pathlib import Path
 
 from fontTools.varLib.instancer.solver import EPSILON
@@ -152,3 +152,27 @@ class Utils:
                 # Should return limit based on where error occurred
                 return 1.0 if x < EPSILON else 0.5
 
+    @staticmethod
+    def morphological_cleanup(
+        img: np.ndarray,
+        kernel_shape: int = cv2.MORPH_ELLIPSE,
+        kernel_size: Tuple[int, int] = (3, 3),
+        iterations: int = 1
+    ) -> np.ndarray:
+        """
+        Applies morphological opening followed by closing to clean up a mask.
+
+        int:
+            mask: `np.ndarray`: Input binary mask (0s and 255s)
+            kernel_shape: `int`: OpenCV kernel shape constant (default: ELLIPSE)
+            kernel_size: `Tuple[int, int]`: kernel size (default: (3,3))
+            iterations : `int`: Number of times to apply each operation (default: 1)
+
+        out:
+            cleaned: `np.ndarray`
+
+        """
+        kernel = cv2.getStructuringElement(kernel_shape, kernel_size)
+        cleaned = cv2.morphologyEx(img, cv2.MORPH_OPEN, kernel, iterations=iterations)
+        cleaned = cv2.morphologyEx(cleaned, cv2.MORPH_CLOSE, kernel, iterations=iterations)
+        return cleaned

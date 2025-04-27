@@ -22,7 +22,7 @@ class MaskHandler:
             selected_pts `List[Dict[str, List[Tuple[int, int]]]]`: list of selected (x, y) points per face, organized by region
         """
 
-        img_read = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
+        img_read = cv2.imread(str(img_path), cv2.IMREAD_GRAYSCALE)
         img_rgb = cv2.cvtColor(img_read, cv2.COLOR_GRAY2RGB)
 
         idxs = {
@@ -98,7 +98,7 @@ class MaskHandler:
         out:
             prob_maps `List[np.ndarray]`: Pixel intensity histograms per face
         """
-        img_gray = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
+        img_gray = cv2.imread(str(img_path), cv2.IMREAD_GRAYSCALE)
         prob_maps = []
 
         for mask in masks:
@@ -108,9 +108,9 @@ class MaskHandler:
                 prob_maps.append(np.zeros(256))
                 continue
 
-            hist = cv2.calcHist([face_pixels], [0], None, [256], [0, 256])
-            prob_map = hist / hist.sum()
-            prob_maps.append(prob_map.flatten())
+            hist, _ = np.histogram(face_pixels, bins=256, range=(0, 256))
+            prob_map = hist / hist.sum() if hist.sum() > 0 else np.zeros(256)
+            prob_maps.append(prob_map)
 
         return prob_maps
 
@@ -199,7 +199,7 @@ class MaskHandler:
         intensity_histograms: List[np.ndarray],
         prior_face_masks: List[np.ndarray],
         alpha: float,
-        lamdba_: float,
+        lambda_: float,
     ) -> List[np.ndarray]:
         """
         Combine intensity histograms and prior faces to get a skin mask.
@@ -230,7 +230,7 @@ class MaskHandler:
             combined_prob_map = intensity_prob_all_pixels * prior_mask_weighted
 
             skin_mask = np.zeros_like(img_gray, dtype=np.uint8)
-            skin_mask[combined_prob_map > lamdba_] = 255
+            skin_mask[combined_prob_map > lambda_] = 255
 
             skin_pixel_maps.append(skin_mask)
 
