@@ -3,6 +3,7 @@ import numpy as np
 from pathlib import Path
 from skimage.filters.rank import entropy
 from skimage.morphology import disk
+from skimage.util import view_as_windows
 from skimage.feature import local_binary_pattern
 from typing import List, Dict, Tuple
 
@@ -134,7 +135,7 @@ class FeatureExtractor:
         feature_dicts = []
 
         for (p, r) in self.p_r_values:
-            lbp_map = local_binary_pattern(img_read, p, r, method="uniform")
+            lbp_map = self.extract_lbp_riu_maps(img_read, p, r)
             lbp_maps[(p, r)] = lbp_map
 
         for label in unique_labels:
@@ -162,6 +163,23 @@ class FeatureExtractor:
             feature_dicts.append(label_feature_dict)
 
         return feature_dicts
+    
+    def extract_lbp_riu_maps(self, img_mat: np.ndarray, P: float, R: float) -> np.ndarray:
+
+        default_lbp_map = local_binary_pattern(img_mat, P, R, method="default")
+        default_lbp_map = default_lbp_map.astype(np.uint8)
+        lookup_table = np.empty(2**P, dtype = np.uint8)
+
+        for code in range(2**P):
+            code_bits = [(code >> i) & 1 for i in range(P)]
+            num_code_transitions = sum(code_bits[i] != code_bits[(i + 1) % P] for i in range(P))
+            if num_code_transitions <= 2:
+                lookup_table[code] = sum(code_bits)
+            else:
+                lookup_table[code] = P + 1  
+        
+        riu2_map = lookup_table[default_lbp_map]
+        return riu2_map
 
     def extract_all_features_superpixels(self, img_path: Path, slic: cv2.ximgproc.SuperpixelSLIC) -> List[Dict]:
         """
@@ -208,7 +226,6 @@ class FeatureExtractor:
         masked_entropy = entropy_map[mask]
         mean_entropy = float(np.mean(masked_entropy))
 
-        # LBP & Lacunarity
         lacunarity_vector = []
         for (p, r) in self.p_r_values:
             lbp_map = local_binary_pattern(img, p, r, method="uniform")
