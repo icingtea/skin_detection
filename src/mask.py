@@ -26,8 +26,8 @@ class MaskHandler:
         img_rgb = cv2.cvtColor(img_read, cv2.COLOR_GRAY2RGB)
 
         idxs = {
-            "left half": [17, 21, 30, 31, 48, 3],
-            "right half": [30, 22, 26, 13, 54, 35],
+            "left half": [17, 21, 30, 31, 48, 36],
+            "right half": [30, 22, 26, 45, 54, 35],
             "nose": [21, 22, 30],
             "left eye": [36, 37, 38, 39, 40, 41],
             "right eye": [42, 43, 44, 45, 46, 47],
@@ -48,34 +48,57 @@ class MaskHandler:
         return img_rgb, selected_pts
 
     def build_masks(
-        self, img_path: Path, mask_pts: List[Dict[str, List[Tuple[int, int]]]]
+        self, img_path: Path, mask_pts: List[Dict[str, List[Tuple[int, int]]]], landmarks_all_faces: List[np.ndarray]
     ) -> Tuple[List[np.ndarray], List[np.ndarray]]:
         """
         builds masks for each face by filling selected facial regions (left half, right half, and upper lip)
         and excluding eye regions using convex hulls
 
         in:
-            img_path `str`: path to the original grayscale image
-            mask_pts `List[Dict[str, List[Tuple[int, int]]]]`: list of selected (x, y) coordinates per face to form convex hulls
+            img_path: `str`: path to the original grayscale image
+            mask_pts: `List[Dict[str, List[Tuple[int, int]]]]`: list of selected (x, y) coordinates per face to form convex hulls
+            landmarks_all_faces: `List[np.ndarray]`: List of arrays of 69 (x, y) points per face
 
         out:
-            masks `List[np.ndarray]`: grayscale masks with selected regions filled (255) and omitted regions (0)
-            masked_imgs `List[np.ndarray]`: grayscale images with the masks applied, keeping only the selected regions
+            masks: `List[np.ndarray]`: grayscale masks with selected regions filled (255) and omitted regions (0)
+            masked_imgs: `List[np.ndarray]`: grayscale images with the masks applied, keeping only the selected regions
         """
 
         img_read = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
         masks = []
         masked_imgs = []
 
-        for face in mask_pts:
+        for idx, face in enumerate(mask_pts):
             mask = np.zeros(img_read.shape, dtype=np.uint8)
             for key, group in face.items():
+                if key in ["upper lip"]:
+                    continue
+
                 polygon = np.array(group, dtype=np.int32)
-                if key in ["left half", "right half", "upper lip", "nose"]:
+                if key in ["left half", "right half", "nose"]:
                     cv2.fillPoly(mask, [polygon], color=255)
                 else:
                     hull = cv2.convexHull(polygon)
                     cv2.fillPoly(mask, [hull], color=0)
+
+            # extrusion into forehead region
+            lm_nose = np.array(landmarks_all_faces[idx][30])
+            lm21 = np.array(landmarks_all_faces[idx][21])
+            lm22 = np.array(landmarks_all_faces[idx][22])
+
+            extrusion_factor = 1.5
+
+            vec21 = lm21 - lm_nose
+            vec22 = lm22 - lm_nose
+
+            extruded_point_21 = lm_nose + vec21 * extrusion_factor
+            extruded_point_22 = lm_nose + vec22 * extrusion_factor
+
+            extruded_point_21 = np.round(extruded_point_21).astype(np.int32)
+            extruded_point_22 = np.round(extruded_point_22).astype(np.int32)
+
+            triangle = np.array([lm_nose, extruded_point_21, extruded_point_22], dtype=np.int32)
+            cv2.fillPoly(mask, [triangle], color=255)
 
             masked_img = cv2.bitwise_and(img_read, mask)
             masked_img = cv2.cvtColor(masked_img, cv2.COLOR_GRAY2RGB)
