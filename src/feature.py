@@ -7,6 +7,13 @@ from scipy.ndimage import generic_filter
 from skimage.filters.rank import entropy
 from skimage.morphology import disk
 from skimage.feature import local_binary_pattern
+from enum import Enum
+
+class EFeature(Enum):
+    MEAN_INTENSITY = "mean_intensity"
+    STD_INTENSITY = "std_intensity"
+    ENTROPY = "entropy"
+    LACUNARITY_VECTOR = "lacunarity_vector"
 
 
 @dataclass
