@@ -11,7 +11,9 @@ class Utils:
     EPSILON = 1e-9
 
     @staticmethod
-    def display(img: np.ndarray, title: str | None = None, cmap: str | None = None) -> None:
+    def display(
+        img: np.ndarray, title: str | None = None, cmap: str | None = None
+    ) -> None:
         """
         Display an image
 
@@ -137,7 +139,9 @@ class Utils:
                 # --- END CORRECTION ---
 
                 # Use np.float64 for intermediate calculations for precision
-                exp_val = np.exp(np.float64(exponent_term))  # This will now be between 0 and 1
+                exp_val = np.exp(
+                    np.float64(exponent_term)
+                )  # This will now be between 0 and 1
 
                 # --- CORRECTED DENOMINATOR ---
                 probability = 1.0 / (1.0 + exp_val)
@@ -157,7 +161,7 @@ class Utils:
         img: np.ndarray,
         kernel_shape: int = cv2.MORPH_ELLIPSE,
         kernel_size: Tuple[int, int] = (3, 3),
-        iterations: int = 1
+        iterations: int = 1,
     ) -> np.ndarray:
         """
         Applies morphological opening followed by closing to clean up a mask.
@@ -174,5 +178,7 @@ class Utils:
         """
         kernel = cv2.getStructuringElement(kernel_shape, kernel_size)
         cleaned = cv2.morphologyEx(img, cv2.MORPH_OPEN, kernel, iterations=iterations)
-        cleaned = cv2.morphologyEx(cleaned, cv2.MORPH_CLOSE, kernel, iterations=iterations)
+        cleaned = cv2.morphologyEx(
+            cleaned, cv2.MORPH_CLOSE, kernel, iterations=iterations
+        )
         return cleaned

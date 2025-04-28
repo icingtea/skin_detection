@@ -9,10 +9,10 @@ from face import FaceDetector
 from mask import MaskHandler
 
 DATA_DIR = Path("../dataset")
-MIDDLE_DIR_NAME = 'helenstar_release'
+MIDDLE_DIR_NAME = "helenstar_release"
 MIDDLE_DIR_PATH = DATA_DIR / MIDDLE_DIR_NAME
-INPUT_IMAGE_DIR = MIDDLE_DIR_PATH / 'train'
-GROUND_TRUTH_MASK_DIR = DATA_DIR / 'threshold_training'
+INPUT_IMAGE_DIR = MIDDLE_DIR_PATH / "train"
+GROUND_TRUTH_MASK_DIR = DATA_DIR / "threshold_training"
 LOG_SUBDIR = Path("../optuna_logs")
 LOG_FILENAME_BASE_XOR = "optuna_log_xor"
 
@@ -27,8 +27,11 @@ def calculate_xor_error(pred_mask, gt_mask):
         return 1.0
 
     if pred_mask.shape != gt_mask.shape:
-        pred_mask = cv2.resize(pred_mask, (gt_mask.shape[1], gt_mask.shape[0]),
-                               interpolation=cv2.INTER_NEAREST)
+        pred_mask = cv2.resize(
+            pred_mask,
+            (gt_mask.shape[1], gt_mask.shape[0]),
+            interpolation=cv2.INTER_NEAREST,
+        )
 
     pred_bool = pred_mask > 128
     gt_bool = gt_mask > 128
@@ -58,7 +61,7 @@ def log_progress_callback(study, frozen_trial, log_file_base):
         )
 
         LOG_SUBDIR.mkdir(parents=True, exist_ok=True)
-        with open(log_file_path, 'a') as f:
+        with open(log_file_path, "a") as f:
             f.write(log_entry)
 
 
@@ -68,8 +71,8 @@ def preprocess_data():
 
     image_basenames = []
     for f in GROUND_TRUTH_MASK_DIR.iterdir():
-        if f.name.endswith('_label.png') and f.is_file():
-            image_basenames.append(f.name.replace('_label.png', ''))
+        if f.name.endswith("_label.png") and f.is_file():
+            image_basenames.append(f.name.replace("_label.png", ""))
 
     print(f"found {len(image_basenames)} GT masks.")
     if not image_basenames:
@@ -113,11 +116,13 @@ def preprocess_data():
             "image_path": str(image_path),
             "intensity_histogram": intensity_histograms[0],
             "prior_mask": prior_face_masks[0],
-            "gt_mask": gt_mask
+            "gt_mask": gt_mask,
         }
         successful_precalc += 1
 
-    print(f"pre-calc done. usable images: {successful_precalc} / {len(image_basenames)}")
+    print(
+        f"pre-calc done. usable images: {successful_precalc} / {len(image_basenames)}"
+    )
     return precalculated_data
 
 
@@ -135,7 +140,7 @@ def objective_xor(trial, precalculated_data, mask_handler):
                 [data["intensity_histogram"]],
                 [data["prior_mask"]],
                 alpha,
-                lambda_
+                lambda_,
             )
 
             if isinstance(skin_pixel_maps_list, list) and skin_pixel_maps_list:
@@ -168,22 +173,24 @@ def main():
 
         mask_handler = MaskHandler()
 
-        objective = functools.partial(objective_xor,
-                                      precalculated_data=precalculated_data,
-                                      mask_handler=mask_handler)
+        objective = functools.partial(
+            objective_xor,
+            precalculated_data=precalculated_data,
+            mask_handler=mask_handler,
+        )
 
         print(f"\nstarting: {STUDY_NAME} with {N_TRIALS} trials...")
-        study = optuna.create_study(study_name=STUDY_NAME,
-                                    direction="minimize",
-                                    load_if_exists=True)
+        study = optuna.create_study(
+            study_name=STUDY_NAME, direction="minimize", load_if_exists=True
+        )
 
-        xor_log_callback = functools.partial(log_progress_callback,
-                                             log_file_base=LOG_FILENAME_BASE_XOR)
+        xor_log_callback = functools.partial(
+            log_progress_callback, log_file_base=LOG_FILENAME_BASE_XOR
+        )
 
-        study.optimize(objective,
-                       n_trials=N_TRIALS,
-                       n_jobs=1,
-                       callbacks=[xor_log_callback])
+        study.optimize(
+            objective, n_trials=N_TRIALS, n_jobs=1, callbacks=[xor_log_callback]
+        )
 
         print("\noptimization finished")
         print(f"number of finished trials: {len(study.trials)}")
@@ -199,5 +206,5 @@ def main():
         print(f"error during optimization: {e}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

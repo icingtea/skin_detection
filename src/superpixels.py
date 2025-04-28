@@ -23,9 +23,10 @@ class SuperpixelExtractor:
         self.region_size = region_size
         self.neighborhood_size = neighborhood_size
         self.algorithm = cv2.ximgproc.SLIC
-        
 
-    def get_slic_superpixels(self, img_path: str) -> tuple[cv2.ximgproc.SuperpixelSLIC, np.ndarray, np.ndarray, int]:
+    def get_slic_superpixels(
+        self, img_path: str
+    ) -> tuple[cv2.ximgproc.SuperpixelSLIC, np.ndarray, np.ndarray, int]:
         """
         computes superpixels using the slic algorithm and returns the results.
 
@@ -67,14 +68,29 @@ class FeatureExtractor:
         self.neighborhood_size = neighborhood_size
         # self.superpixel_extractor = SuperpixelFeatureExtractor(region_size, neighborhood_size)
 
-        self.p_r_values = [(4, 1), (4, 3), (8, 1), (8, 3), (16, 2), (16, 5), (4, 2), (4, 4), (8, 2), (8, 4), (16, 3), (16, 7)]
+        self.p_r_values = [
+            (4, 1),
+            (4, 3),
+            (8, 1),
+            (8, 3),
+            (16, 2),
+            (16, 5),
+            (4, 2),
+            (4, 4),
+            (8, 2),
+            (8, 4),
+            (16, 3),
+            (16, 7),
+        ]
         self.k_values = {
             4: [1, 2, 4],
             8: [1, 4, 7, 8],
             16: [1, 8, 15, 16],
         }
 
-    def extract_basic_superpixel_features_superpixels(self, img_path: str, slic_superpixels: cv2.ximgproc.SuperpixelSLIC) -> list[dict]:
+    def extract_basic_superpixel_features_superpixels(
+        self, img_path: str, slic_superpixels: cv2.ximgproc.SuperpixelSLIC
+    ) -> list[dict]:
         """
         extracts basic features (mean intensity, std intensity, entropy) for each superpixel.
 
@@ -100,21 +116,23 @@ class FeatureExtractor:
         features = []
 
         for label in unique_labels:
-            mask = (labels == label)
+            mask = labels == label
             region_pixels = img_read[mask]
             region_entropy = entropy_map[mask]
 
             feature_dict = {
-                'label': int(label),
-                'mean_intensity': float(np.mean(region_pixels)),
-                'std_intensity': float(np.std(region_pixels)),
-                'entropy': float(np.mean(region_entropy))
+                "label": int(label),
+                "mean_intensity": float(np.mean(region_pixels)),
+                "std_intensity": float(np.std(region_pixels)),
+                "entropy": float(np.mean(region_entropy)),
             }
             features.append(feature_dict)
 
         return features
 
-    def extract_local_binary_patterns_superpixels(self, img_path: str, slic_superpixels: cv2.ximgproc.SuperpixelSLIC) -> list[dict]:
+    def extract_local_binary_patterns_superpixels(
+        self, img_path: str, slic_superpixels: cv2.ximgproc.SuperpixelSLIC
+    ) -> list[dict]:
         """
         extracts local binary pattern (lbp) based features and lacunarity for each superpixel.
 
@@ -134,19 +152,19 @@ class FeatureExtractor:
         lbp_maps = {}
         feature_dicts = []
 
-        for (p, r) in self.p_r_values:
+        for p, r in self.p_r_values:
             lbp_map = self.extract_lbp_riu_maps(img_read, p, r)
             lbp_maps[(p, r)] = lbp_map
 
         for label in unique_labels:
-            mask = (labels == label)
+            mask = labels == label
             label_lbp_maps = {}
             label_lacunarities = []
 
             for (p, r), map in lbp_maps.items():
                 region_lbp_map = map[mask]
                 label_lbp_maps[(p, r)] = region_lbp_map
-            
+
             for (p, r), label_map in label_lbp_maps.items():
                 for k in self.k_values[p]:
                     bin_map = (label_map == k).astype(np.uint8)
@@ -154,67 +172,77 @@ class FeatureExtractor:
                     total_pixels = label_map.size
                     lacunarity = num_zeros / total_pixels
                     label_lacunarities.append(lacunarity)
-            
+
             label_feature_dict = {
                 "label": int(label),
-                "lacunarity_vector": np.array(label_lacunarities)
+                "lacunarity_vector": np.array(label_lacunarities),
             }
 
             feature_dicts.append(label_feature_dict)
 
         return feature_dicts
-    
-    def extract_lbp_riu_maps(self, img_mat: np.ndarray, P: float, R: float) -> np.ndarray:
+
+    def extract_lbp_riu_maps(
+        self, img_mat: np.ndarray, P: float, R: float
+    ) -> np.ndarray:
 
         default_lbp_map = local_binary_pattern(img_mat, P, R, method="default")
         default_lbp_map = default_lbp_map.astype(np.uint8)
-        lookup_table = np.empty(2**P, dtype = np.uint8)
+        lookup_table = np.empty(2**P, dtype=np.uint8)
 
         for code in range(2**P):
             code_bits = [(code >> i) & 1 for i in range(P)]
-            num_code_transitions = sum(code_bits[i] != code_bits[(i + 1) % P] for i in range(P))
+            num_code_transitions = sum(
+                code_bits[i] != code_bits[(i + 1) % P] for i in range(P)
+            )
             if num_code_transitions <= 2:
                 lookup_table[code] = sum(code_bits)
             else:
-                lookup_table[code] = P + 1  
-        
+                lookup_table[code] = P + 1
+
         riu2_map = lookup_table[default_lbp_map]
         return riu2_map
 
-    def extract_all_features_superpixels(self, img_path: Path, slic: cv2.ximgproc.SuperpixelSLIC) -> List[Dict]:
+    def extract_all_features_superpixels(
+        self, img_path: Path, slic: cv2.ximgproc.SuperpixelSLIC
+    ) -> List[Dict]:
         """
         Combination of basic and lbp feature extractors to provide single feature vector for a superpixel.
 
         in:
             img_path: `Path`: path to image
             slic: `cv2.ximgprov.SuperpixelSLIC`: SLIC object
-        
+
         out:
             feature_vectors: `List[Dict]`: List of feature vectors per superpixel
         """
-        basic_features = self.extract_basic_superpixel_features_superpixels(img_path, slic)
+        basic_features = self.extract_basic_superpixel_features_superpixels(
+            img_path, slic
+        )
         lbp_features = self.extract_local_binary_patterns_superpixels(img_path, slic)
 
-        basic_features.sort(key = lambda x: x['label'])
-        lbp_features.sort(key = lambda x: x['label'])
+        basic_features.sort(key=lambda x: x["label"])
+        lbp_features.sort(key=lambda x: x["label"])
 
         if not (len(basic_features) == len(lbp_features)):
             raise ValueError("Feature lists are not the same length")
-        
+
         combined_features = []
         for b, l in zip(basic_features, lbp_features):
-            if b['label'] != l['label']:
-                raise ValueError(f"Label mismatch after sorting: {b['label']} != {l['label']}")
-        
-            merged = { **b, **l }
+            if b["label"] != l["label"]:
+                raise ValueError(
+                    f"Label mismatch after sorting: {b['label']} != {l['label']}"
+                )
+
+            merged = {**b, **l}
             combined_features.append(merged)
-        
+
         return combined_features
 
     def extract_all_features_mask(self, img_path: Path, mask: np.ndarray) -> Dict:
 
         img = cv2.imread(str(img_path), cv2.IMREAD_GRAYSCALE)
-        
+
         img = img.astype(np.uint8)
         mask = mask.astype(np.bool)
 
@@ -227,7 +255,7 @@ class FeatureExtractor:
         mean_entropy = float(np.mean(masked_entropy))
 
         lacunarity_vector = []
-        for (p, r) in self.p_r_values:
+        for p, r in self.p_r_values:
             lbp_map = self.extract_lbp_riu_maps(img, p, r)
             masked_lbp = lbp_map[mask]
 
@@ -245,9 +273,8 @@ class FeatureExtractor:
             "lacunarity_vector": np.array(lacunarity_vector),
         }
 
-    def calculate_feature_learned_probability(self,
-            all_superpixel_features: List[Dict],
-            initial_seed_feature: Dict
+    def calculate_feature_learned_probability(
+        self, all_superpixel_features: List[Dict], initial_seed_feature: Dict
     ) -> Tuple[List[Dict], Dict]:
         """
         calculates learned probability for the features in each superpixel, based on distance to initial seed features
@@ -262,7 +289,12 @@ class FeatureExtractor:
 
         num_superpixels = len(all_superpixel_features)
 
-        expected_feature_keys = ['mean_intensity', 'std_intensity', 'entropy', 'lacunarity_vector']
+        expected_feature_keys = [
+            "mean_intensity",
+            "std_intensity",
+            "entropy",
+            "lacunarity_vector",
+        ]
 
         distances = {key: [] for key in expected_feature_keys}
 
@@ -270,7 +302,9 @@ class FeatureExtractor:
 
         for features in all_superpixel_features:
             features_copy = features.copy()
-            dist_dict = FeatureDivergence.get_divergence(features_copy, seed_features_copy)
+            dist_dict = FeatureDivergence.get_divergence(
+                features_copy, seed_features_copy
+            )
 
             for key in expected_feature_keys:
                 distances[key].append(dist_dict[key])
@@ -283,20 +317,22 @@ class FeatureExtractor:
             max_d = np.max(curr_distances)
             range_d = max_d - min_d + Utils.EPSILON
 
-            norm_params[key] = {'min': min_d, 'range': max_d}
+            norm_params[key] = {"min": min_d, "range": max_d}
 
         feature_probabilities = []
 
         for i in range(num_superpixels):
-            label = all_superpixel_features[i]['label']
-            probs = {'label': label}
+            label = all_superpixel_features[i]["label"]
+            probs = {"label": label}
 
             for key in expected_feature_keys:
                 dist = distances[key][i]
                 p = norm_params[key]
 
-                clamped_dist = np.clip(dist, p['min'], p['min'] + p['range'] - Utils.EPSILON)
-                normalised_dist = (clamped_dist - p['min'] / p['range'])
+                clamped_dist = np.clip(
+                    dist, p["min"], p["min"] + p["range"] - Utils.EPSILON
+                )
+                normalised_dist = clamped_dist - p["min"] / p["range"]
 
                 probs[key] = Utils.phi_k(normalised_dist)
 
@@ -304,9 +340,8 @@ class FeatureExtractor:
 
         return feature_probabilities, norm_params
 
-
-    def calculate_combined_probability(self,
-        individual_feature_probabilities: List[Dict]
+    def calculate_combined_probability(
+        self, individual_feature_probabilities: List[Dict]
     ) -> List[Dict]:
         """
         calculates combined initial prob for every superpixel by multiplying individual feature probabilities
@@ -320,10 +355,15 @@ class FeatureExtractor:
 
         combined_probabilities = []
 
-        probability_value_keys = ['mean_intensity', 'std_intensity', 'entropy', 'lacunarity_vector']
+        probability_value_keys = [
+            "mean_intensity",
+            "std_intensity",
+            "entropy",
+            "lacunarity_vector",
+        ]
 
         for prob_dict in individual_feature_probabilities:
-            label = prob_dict.get('label')
+            label = prob_dict.get("label")
 
             p = 1.0
             keys_found = 0
@@ -334,6 +374,6 @@ class FeatureExtractor:
                 keys_found += 1
 
             p_clipped = float(np.clip(p, 0.0, 1.0))
-            combined_probabilities.append({'label': label, 'p': p_clipped})
+            combined_probabilities.append({"label": label, "p": p_clipped})
 
         return combined_probabilities

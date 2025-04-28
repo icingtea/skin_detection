@@ -13,19 +13,20 @@ from mask import MaskHandler
 
 data_dir = Path("../dataset")
 extracted_data_base_dir = data_dir
-middle_dir_name = 'helenstar_release'
+middle_dir_name = "helenstar_release"
 middle_dir_path = extracted_data_base_dir / middle_dir_name
 
-input_image_dir = middle_dir_path / 'train'
-input_label_dir = middle_dir_path / 'train'
+input_image_dir = middle_dir_path / "train"
+input_label_dir = middle_dir_path / "train"
 
-ground_truth_mask_dir = data_dir / 'threshold_training'
+ground_truth_mask_dir = data_dir / "threshold_training"
 
 SKIN_LABEL_VALUE = 1
 NOSE_LABEL_VALUE = 6
 
 study_name = "ts_pmo_gng_🥀🥀🥀"
 n_trials = 100
+
 
 def calculate_iou(pred_mask, gt_mask):
     pred_mask_bool = pred_mask > 128
@@ -43,7 +44,8 @@ def calculate_iou(pred_mask, gt_mask):
     iou_score = intersection_sum / union_sum
     return iou_score
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     fd = FaceDetector()
     mh = MaskHandler()
     print("loaded facehandler and maskhandler")
@@ -52,12 +54,10 @@ if __name__ == '__main__':
     image_basenames = []
 
     for f in ground_truth_mask_dir.iterdir():
-        if f.name.endswith('_label.png') and f.is_file():
-            image_basenames.append(f.name.replace('_label.png', ''))
+        if f.name.endswith("_label.png") and f.is_file():
+            image_basenames.append(f.name.replace("_label.png", ""))
 
     print(f"found {len(image_basenames)} potential ground truth masks")
-
-
 
     print("pre calculating data for optimisation")
     for basename in tqdm.tqdm(image_basenames):
@@ -75,20 +75,21 @@ if __name__ == '__main__':
             _, selected_pts = mh.get_mask_points(image_path_str, landmarks)
             masks, _ = mh.build_masks(image_path_str, selected_pts)
             intensity_histograms = mh.get_intensity_histograms(image_path_str, masks)
-            prior_face_masks, _, _ = mh.get_prior_face_masks(image_path_str, selected_pts)
+            prior_face_masks, _, _ = mh.get_prior_face_masks(
+                image_path_str, selected_pts
+            )
 
             precalculated_data[basename] = {
                 "image_path": image_path,
                 "intensity_histogram": intensity_histograms[0],
                 "prior_mask": prior_face_masks[0],
-                "gt_mask": gt_mask
+                "gt_mask": gt_mask,
             }
 
         except FileNotFoundError:
             continue
         except Exception as e:
             print(f"error precalculating data for {basename}: {e}. skipping...")
-
 
     def objective(trial):
         alpha = trial.suggest_float("alpha", 0.1, 0.9)
@@ -104,7 +105,7 @@ if __name__ == '__main__':
                     [data["intensity_histogram"]],
                     [data["prior_mask"]],
                     alpha,
-                    lambda_
+                    lambda_,
                 )
 
                 if isinstance(skin_pixel_maps_list, list) and skin_pixel_maps_list:
@@ -125,7 +126,9 @@ if __name__ == '__main__':
         return average_iou
 
     print(f"\nstarting: {study_name}")
-    study = optuna.create_study(study_name=study_name, direction="maximize", load_if_exists=True)
+    study = optuna.create_study(
+        study_name=study_name, direction="maximize", load_if_exists=True
+    )
 
     study.optimize(objective, n_trials=n_trials, n_jobs=1, timeout=None)
 
@@ -142,8 +145,3 @@ if __name__ == '__main__':
             print(f"\t{key}: {value:.8f}")
     except ValueError:
         print("error: no successful trials completed")
-
-
-
-
-

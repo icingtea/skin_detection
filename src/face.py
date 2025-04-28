@@ -5,12 +5,12 @@ from pathlib import Path
 
 
 class FaceDetector:
-    def __init__(self, model_path: str = "/assets/lbfmodel.yaml"):
+    def __init__(self, model_path: Path = Path("/assets/lbfmodel.yaml")):
         self.cascade_classifier: cv2.CascadeClassifier = cv2.CascadeClassifier(
             cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
         )
         self.landmark_model = cv2.face.createFacemarkLBF()
-        self.landmark_model.loadModel(model_path)
+        self.landmark_model.loadModel(str(model_path))
 
     def detect(
         self, img_path: Path, display_indices: bool = False
@@ -51,7 +51,7 @@ class FaceDetector:
             for idx, coords in enumerate(landmarks_face):
                 x, y = coords
                 cv2.circle(img_rgb, (int(x), int(y)), 1, (255, 0, 0), -1)
-                if (display_indices):
+                if display_indices:
                     cv2.putText(
                         img_rgb,
                         str(idx),
