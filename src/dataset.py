@@ -6,7 +6,7 @@ from pathlib import Path
 import time
 import random
 from face import FaceDetector
-from typing import Optional
+from typing import Optional, Tuple
 
 
 class Dataset:
