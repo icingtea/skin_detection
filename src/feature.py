@@ -9,6 +9,7 @@ from skimage.morphology import disk
 from skimage.feature import local_binary_pattern
 from enum import Enum
 
+
 class EFeature(Enum):
     MEAN_INTENSITY = "mean_intensity"
     STD_INTENSITY = "std_intensity"
@@ -162,7 +163,7 @@ class FeatureExtractor:
 
         riu2_map = lookup_table[default_lbp_map]
         return riu2_map
-    
+
     def extract_basic_features_superpixels(
         self, img_path: Path, slic_superpixels: cv2.ximgproc.SuperpixelSLIC
     ) -> List[Feature]:

@@ -175,34 +175,38 @@ class Dataset:
         print("--- Completed ---")
         return True
 
-    def return_img_pair(self, name: Optional[str] = None) -> Tuple[Optional[Path], Optional[Path]]:
-       input_image_dir = Path(self.input_image_dir)
-       output_binary_mask_dir = Path(self.output_binary_mask_dir)   
+    def return_img_pair(
+        self, name: Optional[str] = None
+    ) -> Tuple[Optional[Path], Optional[Path]]:
+        input_image_dir = Path(self.input_image_dir)
+        output_binary_mask_dir = Path(self.output_binary_mask_dir)
 
-       image_files = [
-           f for f in input_image_dir.iterdir() if f.suffix.lower() == "_image.jpg"
-       ]    
+        image_files = [
+            f for f in input_image_dir.iterdir() if f.suffix.lower() == "_image.jpg"
+        ]
 
-       if name:
-           img = name + "_image.jpg"
-           mask = name + "_label.png"   
-           if Path(img) in image_files:
-               image_path = input_image_dir / img
-               mask_path = output_binary_mask_dir / mask
-           else:
-               print("Image not found")
-               return None, None
-       else:
-           random_img = random.choice(image_files)
-           random_mask = random_img.stem.replace("_image", "_label") + random_img.suffix
-           image_path = input_image_dir / random_img
-           mask_path = output_binary_mask_dir / random_mask 
+        if name:
+            img = name + "_image.jpg"
+            mask = name + "_label.png"
+            if Path(img) in image_files:
+                image_path = input_image_dir / img
+                mask_path = output_binary_mask_dir / mask
+            else:
+                print("Image not found")
+                return None, None
+        else:
+            random_img = random.choice(image_files)
+            random_mask = (
+                random_img.stem.replace("_image", "_label") + random_img.suffix
+            )
+            image_path = input_image_dir / random_img
+            mask_path = output_binary_mask_dir / random_mask
 
-       if image_path.exists() and mask_path.exists():
-           return image_path, mask_path
-       else:
-           if not image_path.exists():
-               print(f"Image '{image_path}' not found")
-           if not mask_path.exists():
-               print(f"Mask '{mask_path}' not found")
-           return None, None
+        if image_path.exists() and mask_path.exists():
+            return image_path, mask_path
+        else:
+            if not image_path.exists():
+                print(f"Image '{image_path}' not found")
+            if not mask_path.exists():
+                print(f"Mask '{mask_path}' not found")
+            return None, None
