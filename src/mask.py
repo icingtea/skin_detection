@@ -223,6 +223,8 @@ class MaskHandler:
         prior_face_masks: List[np.ndarray],
         alpha: float,
         lambda_: float,
+        selected_pts: List[Dict[str, List[Tuple[int, int]]]] = [],
+        force_reject: bool = False,
     ) -> List[np.ndarray]:
         """
         Combine intensity histograms and prior faces to get a skin mask.
@@ -246,14 +248,23 @@ class MaskHandler:
         for i in range(len(prior_face_masks)):
             intensity_hist = intensity_histograms[i]
             face_mask = prior_face_masks[i]
+            skin_mask = np.zeros_like(img_gray, dtype=np.uint8)
 
             intensity_prob_all_pixels = intensity_hist[img_gray]
             prior_mask_weighted = (face_mask + Utils.EPSILON) ** alpha
-
             combined_prob_map = intensity_prob_all_pixels * prior_mask_weighted
 
-            skin_mask = np.zeros_like(img_gray, dtype=np.uint8)
             skin_mask[combined_prob_map > lambda_] = 255
+
+            if force_reject and selected_pts:
+                face_landmarks = selected_pts[i]
+
+                if (a:=face_landmarks.get("right eye")) and (b:=face_landmarks.get("left eye")):
+                    left_eye_poly = np.array(a, dtype=np.int32)
+                    right_eye_poly = np.array(b, dtype=np.int32)
+
+                    cv2.fillPoly(skin_mask, [left_eye_poly], 0)
+                    cv2.fillPoly(skin_mask, [right_eye_poly], 0)
 
             skin_pixel_maps.append(skin_mask)
 
