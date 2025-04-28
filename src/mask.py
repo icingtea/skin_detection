@@ -3,7 +3,7 @@ import numpy as np
 from pathlib import Path
 from typing import List, Tuple, Dict
 from matplotlib import pyplot as plt
-from src.projectUtils import Utils
+from src.utils.project_utils import Utils
 
 
 class MaskHandler:

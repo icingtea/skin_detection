@@ -4,9 +4,7 @@ from pathlib import Path
 from collections import deque
 from typing import List, Dict, Set, Tuple, Optional
 
-from src.projectUtils import Utils
-from src.region import FeatureDivergence
-
+from src.utils.project_utils import Utils
 
 class RegionGrower:
 

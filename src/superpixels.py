@@ -7,7 +7,7 @@ from skimage.util import view_as_windows
 from skimage.feature import local_binary_pattern
 from typing import List, Dict, Tuple
 
-from src.projectUtils import Utils
+from src.utils.project_utils import Utils
 from src.region import FeatureDivergence
 
 
@@ -25,13 +25,13 @@ class SuperpixelExtractor:
         self.algorithm = cv2.ximgproc.SLIC
 
     def get_slic_superpixels(
-        self, img_path: str
+        self, img_path: Path
     ) -> tuple[cv2.ximgproc.SuperpixelSLIC, np.ndarray, np.ndarray, int]:
         """
         computes superpixels using the slic algorithm and returns the results.
 
         in:
-            img_path: `str`: path to the input image file
+            img_path: `Path`: path to the input image file
 
         out:
             slic: `cv2.ximgproc.SuperpixelSLIC`: slic superpixel object
@@ -39,7 +39,7 @@ class SuperpixelExtractor:
             labels: `np.ndarray`: array of superpixel labels for each pixel
             num_superpixels: `int`: number of superpixels detected
         """
-        img_read = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
+        img_read = cv2.imread(str(img_path), cv2.IMREAD_GRAYSCALE)
         img_rgb = cv2.cvtColor(img_read, cv2.COLOR_GRAY2RGB)
 
         slic = cv2.ximgproc.createSuperpixelSLIC(
@@ -66,7 +66,6 @@ class FeatureExtractor:
         """
         self.region_size = region_size
         self.neighborhood_size = neighborhood_size
-        # self.superpixel_extractor = SuperpixelFeatureExtractor(region_size, neighborhood_size)
 
         self.p_r_values = [
             (4, 1),

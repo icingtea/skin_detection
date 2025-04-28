@@ -113,48 +113,24 @@ class Utils:
     @staticmethod
     def phi_k(normalized_distance: float) -> float:
         """
-        Corrected function to convert normalized distance to probability using
-        1 / (1 + exp(-1 / x)) (Eq 6 from the paper).
+        Corrected function to convert normalized distance to probability using 1 / (1 + exp(-1 / x)) (Eq 6 from the paper).
 
         Args:
-            normalized_distance (float): The distance x, scaled typically between 0 and 1+.
-                                         Must be non-negative.
+            normalized_distance (float): The distance x, scaled typically between 0 and 1+. Must be non-negative.
 
         Returns:
-            float: Probability value. Approaches 1 as distance -> 0+,
-                   approaches 0.5 as distance -> infinity.
+            float: Probability value. Approaches 1 as distance -> 0+. approaches 0.5 as distance -> infinity.
         """
-        # Ensure distance is non-negative
         x = max(0.0, normalized_distance)
 
-        # Handle the edge case x=0 using the limit or epsilon
         if x < EPSILON:
-            # As x -> 0+, the limit is 1.0
             return 1.0
         else:
-            # Calculate the exponent term safely
-            try:
-                # --- CORRECTED SIGN ---
-                exponent_term = -1.0 / x
-                # --- END CORRECTION ---
+            exponent_term = np.float64(-1.0 / x)
+            exp_val = np.exp(exponent_term)
+            probability = 1.0 / (1.0 + exp_val)
 
-                # Use np.float64 for intermediate calculations for precision
-                exp_val = np.exp(
-                    np.float64(exponent_term)
-                )  # This will now be between 0 and 1
-
-                # --- CORRECTED DENOMINATOR ---
-                probability = 1.0 / (1.0 + exp_val)
-                # --- END CORRECTION ---
-
-                # Ensure probability is within valid range [0, 1]
-                return float(np.clip(probability, 0.0, 1.0))
-            except OverflowError:
-                # This is now extremely unlikely because exponent_term <= 0
-                return 1.0  # Fallback for very small x
-            except Exception as e:
-                # Should return limit based on where error occurred
-                return 1.0 if x < EPSILON else 0.5
+            return float(np.clip(probability, 0.0, 1.0))
 
     @staticmethod
     def morphological_cleanup(
