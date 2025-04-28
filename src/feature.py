@@ -3,6 +3,7 @@ import numpy as np
 import cv2
 from typing import List, Dict, Tuple
 from dataclasses import dataclass
+from scipy.ndimage import generic_filter
 from skimage.filters.rank import entropy
 from skimage.morphology import disk
 from skimage.feature import local_binary_pattern
@@ -154,12 +155,12 @@ class FeatureExtractor:
 
         riu2_map = lookup_table[default_lbp_map]
         return riu2_map
-
+    
     def extract_basic_features_superpixels(
         self, img_path: Path, slic_superpixels: cv2.ximgproc.SuperpixelSLIC
     ) -> List[Feature]:
         """
-        Extract the following features from the slic_superpixels object
+        Extract the following features from the slic_superpixels object:
             - mean_intensity
             - std_intensity
             - entropy
@@ -172,9 +173,21 @@ class FeatureExtractor:
             basic_features: `List[Feature]`: Partial Feature Vectors for each superpixel
         """
         img = cv2.imread(str(img_path), cv2.IMREAD_GRAYSCALE)
-        img = np.array(img, dtype=np.uint32)
+        img = np.array(img, dtype=np.float64)
 
-        entropy_map = entropy(img, disk(self.neighborhood_size))
+        square_size = (self.neighborhood_size, self.neighborhood_size)
+
+        def compute_entropy(values):
+            hist, _ = np.histogram(values, bins=256, range=(0, 256), density=True)
+            hist = hist[hist > 0]
+            return -np.sum(hist * np.log(hist))
+
+        entropy_map = generic_filter(img, compute_entropy, size=square_size)
+
+        def std_func(values):
+            return np.std(values)
+
+        std_map = generic_filter(img, std_func, size=square_size)
 
         labels = slic_superpixels.getLabels()
         unique_labels = np.unique(labels)
@@ -183,14 +196,14 @@ class FeatureExtractor:
         for label in unique_labels:
             mask = labels == label
             region_pixels = img[mask]
-
             region_entropy = entropy_map[mask]
+            region_std = std_map[mask]
 
             features.append(
                 Feature(
                     label=int(label),
                     mean_intensity=np.float64(np.mean(region_pixels)),
-                    std_intensity=np.float64(np.std(region_pixels)),
+                    std_intensity=np.float64(np.mean(region_std)),
                     entropy=np.float64(np.mean(region_entropy)),
                     lacunarity_vector=None,
                 )
