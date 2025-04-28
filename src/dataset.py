@@ -6,6 +6,7 @@ from pathlib import Path
 import time
 import random
 from face import FaceDetector
+from typing import Optional
 
 
 class Dataset:
@@ -174,36 +175,34 @@ class Dataset:
         print("--- Completed ---")
         return True
 
-    def return_img_pair(self, name=None):
-        image_files = [
-            f
-            for f in os.listdir(self.input_image_dir)
-            if f.lower().endswith("_image.jpg")
-        ]
+    def return_img_pair(self, name: Optional[str] = None) -> Tuple[Optional[Path], Optional[Path]]:
+       input_image_dir = Path(self.input_image_dir)
+       output_binary_mask_dir = Path(self.output_binary_mask_dir)   
 
-        if name:
-            img = name + "_image.jpg"
-            mask = name + "_label.png"
+       image_files = [
+           f for f in input_image_dir.iterdir() if f.suffix.lower() == "_image.jpg"
+       ]    
 
-            if img in image_files:
-                image_path = os.path.join(self.input_image_dir, img)
-                mask_path = os.path.join(self.output_binary_mask_dir, mask)
-            else:
-                print("Image not found")
-                return None, None
-        else:
-            random_img = random.choice(image_files)
-            random_mask = random_img.replace("_image.jpg", "_label.png")
-            image_path = os.path.join(self.input_image_dir, random_img)
-            mask_path = os.path.join(self.output_binary_mask_dir, random_mask)
+       if name:
+           img = name + "_image.jpg"
+           mask = name + "_label.png"   
+           if Path(img) in image_files:
+               image_path = input_image_dir / img
+               mask_path = output_binary_mask_dir / mask
+           else:
+               print("Image not found")
+               return None, None
+       else:
+           random_img = random.choice(image_files)
+           random_mask = random_img.stem.replace("_image", "_label") + random_img.suffix
+           image_path = input_image_dir / random_img
+           mask_path = output_binary_mask_dir / random_mask 
 
-        if os.path.exists(image_path) and os.path.exists(mask_path):
-            image_read = cv2.imread(image_path)
-            mask_read = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
-            return image_read, mask_read
-        else:
-            if not os.path.exists(image_path):
-                print(f"Image '{image_path}' not found")
-            if not os.path.exists(mask_path):
-                print(f"Mask '{mask_path}' not found")
-            return None, None
+       if image_path.exists() and mask_path.exists():
+           return image_path, mask_path
+       else:
+           if not image_path.exists():
+               print(f"Image '{image_path}' not found")
+           if not mask_path.exists():
+               print(f"Mask '{mask_path}' not found")
+           return None, None
