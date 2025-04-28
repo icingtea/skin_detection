@@ -122,17 +122,18 @@ class FeatureExtractor:
         }
 
     def _extract_lbp_riu_maps(
-        self, img_map: np.ndarray, P: float, R: float
+        self, img_map: np.ndarray, P: np.uint32, R: np.uint32
     ) -> np.ndarray:
         """
         Extract rotationally invariant default binary pattern map (riu2) for a given P and R
 
         in:
             img_path: `Path`: Path to img
-            slic_superpixels: `cv2.ximgproc.SuperpixelSLIC`: Superpixel object
+            P: `np.int32`: Number of neighbors used to create a binary pattern
+            R: `np.int32`: Radius of circular neighborhood
 
         out:
-            basic_features: `List[Feature]`: Partial Feature Vectors for each superpixel
+            riu2_map: `np.ndarray`: Resulting rotationally invariant LBP map 
         """
         default_lbp_map: np.ndarray = local_binary_pattern(
             img_map, P, R, method="default"
