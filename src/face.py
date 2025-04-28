@@ -5,15 +5,15 @@ from pathlib import Path
 
 
 class FaceDetector:
-    def __init__(self, model_path: str = "/assets/lbfmodel.yaml"):
+    def __init__(self, model_path: Path = Path("/assets/lbfmodel.yaml")):
         self.cascade_classifier: cv2.CascadeClassifier = cv2.CascadeClassifier(
             cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
         )
         self.landmark_model = cv2.face.createFacemarkLBF()
-        self.landmark_model.loadModel(model_path)
+        self.landmark_model.loadModel(str(model_path))
 
     def detect(
-        self, img_path: Path
+        self, img_path: Path, display_indices: bool = False
     ) -> Tuple[np.ndarray, List[np.ndarray], List[Tuple[int, int]], List[np.ndarray]]:
         """
         Detects faces and 68-point landmarks in a grayscale image and draws them on a rgb copy
@@ -47,8 +47,19 @@ class FaceDetector:
         _, landmarks_all_faces = self.landmark_model.fit(img_read, face_rectangles)
         landmarks_all_faces = [landmarks[0] for landmarks in landmarks_all_faces]
 
-        for landmarks_face in landmarks_all_faces:
-            for x, y in landmarks_face:
+        for _, landmarks_face in enumerate(landmarks_all_faces):
+            for idx, coords in enumerate(landmarks_face):
+                x, y = coords
                 cv2.circle(img_rgb, (int(x), int(y)), 1, (255, 0, 0), -1)
-
+                if display_indices:
+                    cv2.putText(
+                        img_rgb,
+                        str(idx),
+                        (int(x) + 2, int(y) - 2),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.3,
+                        (0, 0, 0),
+                        1,
+                        cv2.LINE_AA,
+                    )
         return img_rgb, list(face_rectangles), face_centers, landmarks_all_faces

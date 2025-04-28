@@ -1,7 +1,9 @@
 import cv2
 import numpy as np
-from typing import List
+from typing import List, Tuple
 from pathlib import Path
+
+from fontTools.varLib.instancer.solver import EPSILON
 from matplotlib import pyplot as plt
 
 
@@ -9,7 +11,9 @@ class Utils:
     EPSILON = 1e-9
 
     @staticmethod
-    def display(img: np.ndarray, title: str | None = None, cmap: str | None = None) -> None:
+    def display(
+        img: np.ndarray, title: str | None = None, cmap: str | None = None
+    ) -> None:
         """
         Display an image
 
@@ -105,3 +109,76 @@ class Utils:
                 img_rgb[img_gray == intensity] = [r, g, b]
 
         Utils.display(img_rgb)
+
+    @staticmethod
+    def phi_k(normalized_distance: float) -> float:
+        """
+        Corrected function to convert normalized distance to probability using
+        1 / (1 + exp(-1 / x)) (Eq 6 from the paper).
+
+        Args:
+            normalized_distance (float): The distance x, scaled typically between 0 and 1+.
+                                         Must be non-negative.
+
+        Returns:
+            float: Probability value. Approaches 1 as distance -> 0+,
+                   approaches 0.5 as distance -> infinity.
+        """
+        # Ensure distance is non-negative
+        x = max(0.0, normalized_distance)
+
+        # Handle the edge case x=0 using the limit or epsilon
+        if x < EPSILON:
+            # As x -> 0+, the limit is 1.0
+            return 1.0
+        else:
+            # Calculate the exponent term safely
+            try:
+                # --- CORRECTED SIGN ---
+                exponent_term = -1.0 / x
+                # --- END CORRECTION ---
+
+                # Use np.float64 for intermediate calculations for precision
+                exp_val = np.exp(
+                    np.float64(exponent_term)
+                )  # This will now be between 0 and 1
+
+                # --- CORRECTED DENOMINATOR ---
+                probability = 1.0 / (1.0 + exp_val)
+                # --- END CORRECTION ---
+
+                # Ensure probability is within valid range [0, 1]
+                return float(np.clip(probability, 0.0, 1.0))
+            except OverflowError:
+                # This is now extremely unlikely because exponent_term <= 0
+                return 1.0  # Fallback for very small x
+            except Exception as e:
+                # Should return limit based on where error occurred
+                return 1.0 if x < EPSILON else 0.5
+
+    @staticmethod
+    def morphological_cleanup(
+        img: np.ndarray,
+        kernel_shape: int = cv2.MORPH_ELLIPSE,
+        kernel_size: Tuple[int, int] = (3, 3),
+        iterations: int = 1,
+    ) -> np.ndarray:
+        """
+        Applies morphological opening followed by closing to clean up a mask.
+
+        int:
+            mask: `np.ndarray`: Input binary mask (0s and 255s)
+            kernel_shape: `int`: OpenCV kernel shape constant (default: ELLIPSE)
+            kernel_size: `Tuple[int, int]`: kernel size (default: (3,3))
+            iterations : `int`: Number of times to apply each operation (default: 1)
+
+        out:
+            cleaned: `np.ndarray`
+
+        """
+        kernel = cv2.getStructuringElement(kernel_shape, kernel_size)
+        cleaned = cv2.morphologyEx(img, cv2.MORPH_OPEN, kernel, iterations=iterations)
+        cleaned = cv2.morphologyEx(
+            cleaned, cv2.MORPH_CLOSE, kernel, iterations=iterations
+        )
+        return cleaned
