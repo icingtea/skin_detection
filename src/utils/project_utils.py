@@ -158,3 +158,38 @@ class Utils:
             cleaned, cv2.MORPH_CLOSE, kernel, iterations=iterations
         )
         return cleaned
+
+    @staticmethod
+    def display_selected_superpixels(
+        img_path: Path,
+        labels_array: np.ndarray,
+        selected_labels: List[int],
+        title: str | None = None,
+        cmap: str | None = None,
+    ) -> None:
+        """
+        Displays an image with only the selected superpixels visible.
+
+        Args:
+            img (np.ndarray): The original image
+            labels_array (np.ndarray): Array of superpixel labels
+            selected_labels (List[int]): List of superpixel labels to display
+            title (str, optional): Title for the plot. Defaults to None.
+            cmap (str, optional): Colormap for grayscale images. Defaults to None.
+            highlight_color (tuple, optional): RGB color for highlighting selected superpixels. Defaults to red.
+        """
+        img = cv2.imread(str(img_path), cv2.IMREAD_GRAYSCALE)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+        mask = np.zeros_like(labels_array, dtype=bool)
+        for label in selected_labels:
+            mask = np.logical_or(mask, labels_array == label)
+
+        result = np.zeros_like(img)
+        result[mask] = img[mask]
+
+        plt.imshow(result, cmap=cmap)
+        plt.axis("off")
+        if title:
+            plt.title(title)
+        plt.show()

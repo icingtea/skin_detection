@@ -48,7 +48,10 @@ class MaskHandler:
         return img_rgb, selected_pts
 
     def build_masks(
-        self, img_path: Path, mask_pts: List[Dict[str, List[Tuple[int, int]]]], landmarks_all_faces: List[np.ndarray]
+        self,
+        img_path: Path,
+        mask_pts: List[Dict[str, List[Tuple[int, int]]]],
+        landmarks_all_faces: List[np.ndarray],
     ) -> Tuple[List[np.ndarray], List[np.ndarray]]:
         """
         builds masks for each face by filling selected facial regions (left half, right half, and upper lip)
@@ -97,7 +100,9 @@ class MaskHandler:
             extruded_point_21 = np.round(extruded_point_21).astype(np.int32)
             extruded_point_22 = np.round(extruded_point_22).astype(np.int32)
 
-            triangle = np.array([lm_nose, extruded_point_21, extruded_point_22], dtype=np.int32)
+            triangle = np.array(
+                [lm_nose, extruded_point_21, extruded_point_22], dtype=np.int32
+            )
             cv2.fillPoly(mask, [triangle], color=255)
 
             masked_img = cv2.bitwise_and(img_read, mask)
@@ -259,7 +264,9 @@ class MaskHandler:
             if force_reject and selected_pts:
                 face_landmarks = selected_pts[i]
 
-                if (a:=face_landmarks.get("right eye")) and (b:=face_landmarks.get("left eye")):
+                if (a := face_landmarks.get("right eye")) and (
+                    b := face_landmarks.get("left eye")
+                ):
                     left_eye_poly = np.array(a, dtype=np.int32)
                     right_eye_poly = np.array(b, dtype=np.int32)
 

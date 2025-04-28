@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple, List
 
 
 class SuperpixelExtractor:
@@ -46,3 +46,41 @@ class SuperpixelExtractor:
         contoured_img = cv2.addWeighted(img_rgb, 1, contour_colored_mask, 1, 0)
 
         return slic, contoured_img, slic.getLabels(), slic.getNumberOfSuperpixels()
+
+    def get_mask_labels(
+        self,
+        slic_superpixels: cv2.ximgproc.SuperpixelSLIC,
+        mask: np.ndarray,
+        overlap_threshold: float = 0.9,
+    ) -> List[int]:
+        """
+        Returns list of superpixel labels that lie within a mask. The threshold for the overlap is adjustable.
+
+        in:
+            slic_superpixels: `cv2.ximgproc.SuperpixelSLIC`: superpixel object
+            mask: `np.ndarray`: mask to check for overlaps with
+            overlap_threshold: `float` [DEFAULT 0.9]: pixel overlap threshold
+        """
+
+        binary_mask = (mask > 0).astype(np.uint8)
+
+        labels = slic_superpixels.getLabels()
+        num_superpixels = slic_superpixels.getNumberOfSuperpixels()
+
+        overlapping_labels = []
+
+        for label_id in range(num_superpixels):
+            superpixel_map: np.ndarray = (labels == label_id).astype(np.uint8)
+
+            intersection = np.logical_and(superpixel_map, binary_mask).sum()
+            superpixel_size = superpixel_map.sum()
+
+            if superpixel_size == 0:
+                continue
+
+            overlap_ration = intersection / superpixel_size
+
+            if overlap_ration >= overlap_threshold:
+                overlapping_labels.append(label_id)
+
+        return overlapping_labels

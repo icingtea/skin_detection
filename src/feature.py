@@ -133,7 +133,7 @@ class FeatureExtractor:
             R: `np.int32`: Radius of circular neighborhood
 
         out:
-            riu2_map: `np.ndarray`: Resulting rotationally invariant LBP map 
+            riu2_map: `np.ndarray`: Resulting rotationally invariant LBP map
         """
         default_lbp_map: np.ndarray = local_binary_pattern(
             img_map, P, R, method="default"
