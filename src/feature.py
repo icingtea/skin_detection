@@ -125,14 +125,21 @@ class FeatureExtractor:
         self, img_map: np.ndarray, P: float, R: float
     ) -> np.ndarray:
         """
-        DOC TODO
+        Extract rotationally invariant default binary pattern map (riu2) for a given P and R
+
+        in:
+            img_path: `Path`: Path to img
+            slic_superpixels: `cv2.ximgproc.SuperpixelSLIC`: Superpixel object
+
+        out:
+            basic_features: `List[Feature]`: Partial Feature Vectors for each superpixel
         """
         default_lbp_map: np.ndarray = local_binary_pattern(
             img_map, P, R, method="default"
         )
-        default_lbp_map = default_lbp_map.astype(np.uint8)
+        default_lbp_map = default_lbp_map.astype(np.uint32)
 
-        lookup_table = np.empty(2**P, dtype=np.uint8)
+        lookup_table = np.empty(2**P, dtype=np.uint32)
 
         for code in range(2**P):
             code_bits = [(code >> i) & 1 for i in range(P)]
@@ -140,7 +147,7 @@ class FeatureExtractor:
                 code_bits[i] != code_bits[(i + 1) % P] for i in range(P)
             )
             if num_code_transitions <= 2:
-                lookup_table[code] = sum(code_bits)
+                lookup_table[code] = code
             else:
                 lookup_table[code] = P + 1
 
@@ -164,7 +171,7 @@ class FeatureExtractor:
             basic_features: `List[Feature]`: Partial Feature Vectors for each superpixel
         """
         img = cv2.imread(str(img_path), cv2.IMREAD_GRAYSCALE)
-        img = np.array(img, dtype=np.uint8)
+        img = np.array(img, dtype=np.uint32)
 
         entropy_map = entropy(img, disk(self.neighborhood_size))
 
@@ -184,7 +191,7 @@ class FeatureExtractor:
                     mean_intensity=np.float64(np.mean(region_pixels)),
                     std_intensity=np.float64(np.std(region_pixels)),
                     entropy=np.float64(np.mean(region_entropy)),
-                    lacunarity_vector=None
+                    lacunarity_vector=None,
                 )
             )
 
@@ -228,7 +235,7 @@ class FeatureExtractor:
 
             for (p, r), label_map in label_lbp_maps.items():
                 for k in self.k_values[p]:
-                    bin_map = (label_map == k).astype(np.uint8)
+                    bin_map = (label_map == k).astype(np.uint32)
                     num_zeros = np.sum(bin_map == 0)
                     total_pixels = label_map.size
                     lacunarity = num_zeros / total_pixels
@@ -240,7 +247,7 @@ class FeatureExtractor:
                     mean_intensity=None,
                     std_intensity=None,
                     entropy=None,
-                    lacunarity_vector=np.array(label_lacunarities)
+                    lacunarity_vector=np.array(label_lacunarities),
                 )
             )
 

@@ -3,8 +3,9 @@ import numpy as np
 from typing import List, Tuple
 from pathlib import Path
 
+
 class FaceDetector:
-    def __init__(self, model_path: Path = Path("/assets/lbfmodel.yaml")):
+    def __init__(self, model_path: Path = Path("assets/lbfmodel.yaml")):
         self.cascade_classifier: cv2.CascadeClassifier = cv2.CascadeClassifier(
             cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
         )
