@@ -7,15 +7,18 @@ import time
 import random
 from face import FaceDetector
 
+
 class Dataset:
-    DATASET_URL_DROPBOX = "https://www.dropbox.com/s/hgixfsj2ea8qwrq/helenstar_release.7z?dl=1"
+    DATASET_URL_DROPBOX = (
+        "https://www.dropbox.com/s/hgixfsj2ea8qwrq/helenstar_release.7z?dl=1"
+    )
     ARCHIVE_FILENAME = "helenstar_release.7z"
     MIDDLE_DIR_NAME = "helenstar_release"
     SKIN_LABEL_VALUE = 1
     NOSE_LABEL_VALUE = 6
 
     def __init__(self, data_dir="./dataset", cleanup_archive=True):
-        self.detector = FaceDetector(Path('assets/lbfmodel.yaml'))
+        self.detector = FaceDetector(Path("assets/lbfmodel.yaml"))
         self.data_dir = data_dir
         self.cleanup_archive = cleanup_archive
         self.middle_dir_path = os.path.join(self.data_dir, self.MIDDLE_DIR_NAME)
@@ -41,18 +44,23 @@ class Dataset:
                 if chunk:
                     f.write(chunk)
                     downloaded_size += len(chunk)
-                    percent = (downloaded_size / total_size * 100) if total_size > 0 else 0
+                    percent = (
+                        (downloaded_size / total_size * 100) if total_size > 0 else 0
+                    )
                     elapsed_time = time.time() - start_time
                     speed = (
                         (downloaded_size / elapsed_time / 1024**2)
                         if elapsed_time > 0
                         else 0
                     )
-                    print(f"\rdownload {downloaded_size / 1024 ** 2:.2f} / {total_size / 1024 ** 2:.2f} MB ({percent:.1f}%) at {speed:.2f} MB/s", end="")
+                    print(
+                        f"\rdownload {downloaded_size / 1024 ** 2:.2f} / {total_size / 1024 ** 2:.2f} MB ({percent:.1f}%) at {speed:.2f} MB/s",
+                        end="",
+                    )
 
         print(f"\n{file_description} download complete.")
         return True
-    
+
     def extract_7z_archive(self, archive_path, extract_path):
         print(f"Extracting archive: {archive_path}")
         os.makedirs(extract_path, exist_ok=True)
@@ -74,7 +82,11 @@ class Dataset:
         count_skipped_wrong_faces = 0
         count_error_processing = 0
 
-        all_label_files = [f for f in os.listdir(self.input_label_dir) if f.lower().endswith("_label.png")]
+        all_label_files = [
+            f
+            for f in os.listdir(self.input_label_dir)
+            if f.lower().endswith("_label.png")
+        ]
         total_labels = len(all_label_files)
         print(f"Found {total_labels} potential label files.")
 
@@ -100,8 +112,12 @@ class Dataset:
                         count_error_processing += 1
                         continue
 
-                    skin_mask = cv2.inRange(label_image, self.SKIN_LABEL_VALUE, self.SKIN_LABEL_VALUE)
-                    nose_mask = cv2.inRange(label_image, self.NOSE_LABEL_VALUE, self.NOSE_LABEL_VALUE)
+                    skin_mask = cv2.inRange(
+                        label_image, self.SKIN_LABEL_VALUE, self.SKIN_LABEL_VALUE
+                    )
+                    nose_mask = cv2.inRange(
+                        label_image, self.NOSE_LABEL_VALUE, self.NOSE_LABEL_VALUE
+                    )
                     combined_mask = cv2.bitwise_or(skin_mask, nose_mask)
 
                     cv2.imwrite(output_path, combined_mask)
@@ -126,7 +142,10 @@ class Dataset:
     def run(self):
         print("--- Fetching and extracting the dataset ---")
 
-        if os.path.isdir(self.output_binary_mask_dir) and len(os.listdir(self.output_binary_mask_dir)) > 0:
+        if (
+            os.path.isdir(self.output_binary_mask_dir)
+            and len(os.listdir(self.output_binary_mask_dir)) > 0
+        ):
             print(f"Processed masks already exist at: {self.output_binary_mask_dir}")
             print("Skipping all processing.")
             return True
@@ -136,9 +155,13 @@ class Dataset:
         else:
             if not os.path.exists(self.archive_path):
                 print(f"Archive not found at {self.archive_path}. Downloading...")
-                self.download_file(self.DATASET_URL_DROPBOX, self.archive_path, "Dataset Archive")
+                self.download_file(
+                    self.DATASET_URL_DROPBOX, self.archive_path, "Dataset Archive"
+                )
             else:
-                print(f"Archive already exists at: {self.archive_path}. Skipping download.")
+                print(
+                    f"Archive already exists at: {self.archive_path}. Skipping download."
+                )
 
             self.extract_7z_archive(self.archive_path, self.data_dir)
 
@@ -151,8 +174,12 @@ class Dataset:
         print("--- Completed ---")
         return True
 
-    def return_img_pair(self, name = None):
-        image_files = [f for f in os.listdir(self.input_image_dir) if f.lower().endswith("_image.jpg")]
+    def return_img_pair(self, name=None):
+        image_files = [
+            f
+            for f in os.listdir(self.input_image_dir)
+            if f.lower().endswith("_image.jpg")
+        ]
 
         if name:
             img = name + "_image.jpg"
@@ -162,7 +189,7 @@ class Dataset:
                 image_path = os.path.join(self.input_image_dir, img)
                 mask_path = os.path.join(self.output_binary_mask_dir, mask)
             else:
-                print("Image not found") 
+                print("Image not found")
                 return None, None
         else:
             random_img = random.choice(image_files)
