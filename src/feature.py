@@ -11,7 +11,6 @@ from enum import Enum
 from src.utils.project_utils import Utils
 
 
-
 class EFeature(Enum):
     MEAN_INTENSITY = "mean_intensity"
     STD_INTENSITY = "std_intensity"
@@ -30,6 +29,15 @@ class PhiN:
     def get_learned_probability(
         self, feature_selection: List["EFeature"]
     ) -> np.float64:
+        """
+        Returns the learned probability of this divergence vector
+
+        in:
+            feature_selection: `List[EFeature]`: List of features to be considered while calculation of learned probability
+
+        out:
+            learned_probability: `np.float64`
+        """
         skin_probability = np.float64(1.0)
 
         if (
@@ -58,7 +66,7 @@ class PhiN:
 
 @dataclass
 class FeatureDivergence:
-    label: Tuple[int, int]
+    label: Tuple[int, int] | None
     mean_intensity: np.float64 | None
     std_intensity: np.float64 | None
     entropy: np.float64 | None
@@ -71,6 +79,12 @@ class FeatureDivergence:
         return self.label[1]
 
     def get_phi_n(self) -> "PhiN":
+        """
+        Returns Phi vector, which is element wise phi_k of divergence vector
+
+        out:
+            phi_vector: `PhiN`
+        """
         return PhiN(
             label=self.label,
             mean_intensity=(
@@ -92,6 +106,9 @@ class FeatureDivergence:
         )
 
     def __add__(self, other: "FeatureDivergence") -> "FeatureDivergence":
+        """
+        Helper method to easily add two divergnce vectors. Performs element wise sum
+        """
         if not isinstance(other, FeatureDivergence):
             return NotImplemented
 
@@ -102,7 +119,7 @@ class FeatureDivergence:
                 return None
 
         return FeatureDivergence(
-            label=self.label,  # keep the current label
+            label=None,  # Label is nonsensical when considering sum of two divergences
             mean_intensity=add_or_none(self.mean_intensity, other.mean_intensity),
             std_intensity=add_or_none(self.std_intensity, other.std_intensity),
             entropy=add_or_none(self.entropy, other.entropy),
@@ -112,6 +129,15 @@ class FeatureDivergence:
         )
 
     def div(self, divisor: np.float64) -> "FeatureDivergence":
+        """
+        Helper method to divide divergence vector with a scalar
+
+        in:
+            division: `np.float64`
+
+        out:
+            divergence_vector: `FeatureDivergence`
+        """
         if not isinstance(divisor, np.float64):
             return NotImplemented
 
@@ -137,6 +163,15 @@ class Feature:
     lacunarity_vector: np.ndarray | None
 
     def __add__(self, other: "Feature") -> "Feature":
+        """
+        Helper function to concatenate two partial Feature vectors together. Performs label validation.
+
+        in:
+            other: `Feature`
+
+        out:
+            feature: `Feature`
+        """
         if not isinstance(other, Feature):
             return NotImplemented
 
