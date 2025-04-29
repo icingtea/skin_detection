@@ -18,7 +18,11 @@ git clone https://github.com/icingtea/skin_detection.git
 cd skin_detection
 pip install -r requirements.txt
 ```
-2. Run `main.ipynb`
+2. Download and extract dataset
+```bash
+python src/dataset.py
+```
+3. Run `main.ipynb`
 
 # 🌐 BibTex
 ```bibtex
