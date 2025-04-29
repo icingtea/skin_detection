@@ -3,11 +3,13 @@ import numpy as np
 import cv2
 from typing import List, Dict, Tuple
 from dataclasses import dataclass
+from scipy.ndimage import generic_filter
 from skimage.filters.rank import entropy
 from skimage.morphology import disk
 from skimage.feature import local_binary_pattern
 from enum import Enum
 from src.utils.project_utils import Utils
+
 
 
 class EFeature(Enum):
@@ -290,7 +292,7 @@ class FeatureExtractor:
         self, img_path: Path, slic_superpixels: cv2.ximgproc.SuperpixelSLIC
     ) -> List[Feature]:
         """
-        Extract the following features from the slic_superpixels object
+        Extract the following features from the slic_superpixels object:
             - mean_intensity
             - std_intensity
             - entropy
@@ -305,7 +307,12 @@ class FeatureExtractor:
         img = cv2.imread(str(img_path), cv2.IMREAD_GRAYSCALE)
         img = np.array(img, dtype=np.uint16)
 
-        entropy_map = entropy(img, disk(self.neighborhood_size))
+        entropy_map = generic_filter(img, compute_entropy, size=square_size)
+
+        def std_func(values):
+            return np.std(values)
+
+        std_map = generic_filter(img, std_func, size=square_size)
 
         labels = slic_superpixels.getLabels()
         unique_labels = np.unique(labels)
@@ -314,14 +321,14 @@ class FeatureExtractor:
         for label in unique_labels:
             mask = labels == label
             region_pixels = img[mask]
-
             region_entropy = entropy_map[mask]
+            region_std = std_map[mask]
 
             features.append(
                 Feature(
                     label=int(label),
                     mean_intensity=np.float64(np.mean(region_pixels)),
-                    std_intensity=np.float64(np.std(region_pixels)),
+                    std_intensity=np.float64(np.mean(region_std)),
                     entropy=np.float64(np.mean(region_entropy)),
                     lacunarity_vector=None,
                 )

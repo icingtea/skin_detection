@@ -7,7 +7,6 @@ from pathlib import Path
 from src.feature import FeatureDivergence, FeatureExtractor, Feature, EFeature
 from src.superpixels import SuperpixelExtractor
 
-
 class Region:
     def __init__(self) -> None:
         self.spe = SuperpixelExtractor()
@@ -21,20 +20,7 @@ class Region:
     ) -> List[int]:
         if not most_favorable_divergence:
             return []
-
-        prob_label_pairs = [
-            (
-                div.get_phi_n().get_learned_probability(feature_selection),
-                div.get_self_label(),
-            )
-            for div in most_favorable_divergence
-        ]
-        probabilities = np.array([prob for prob, _ in prob_label_pairs])
-
-        threshold = np.percentile(probabilities, percentile_threshold * 100)
-
-        selected_labels = [
-            label for prob, label in prob_label_pairs if prob >= threshold
+            if prob >= cutoff_probability
         ]
 
         return selected_labels
