@@ -305,7 +305,14 @@ class FeatureExtractor:
             basic_features: `List[Feature]`: Partial Feature Vectors for each superpixel
         """
         img = cv2.imread(str(img_path), cv2.IMREAD_GRAYSCALE)
-        img = np.array(img, dtype=np.uint16)
+        img = np.array(img, dtype=np.float64)
+
+        square_size = (self.neighborhood_size, self.neighborhood_size)
+
+        def compute_entropy(values):
+            hist, _ = np.histogram(values, bins=256, range=(0, 256), density=True)
+            hist = hist[hist > 0]
+            return -np.sum(hist * np.log(hist))
 
         entropy_map = generic_filter(img, compute_entropy, size=square_size)
 

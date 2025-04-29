@@ -20,7 +20,20 @@ class Region:
     ) -> List[int]:
         if not most_favorable_divergence:
             return []
-            if prob >= cutoff_probability
+
+        prob_label_pairs = [
+            (
+                div.get_phi_n().get_learned_probability(feature_selection),
+                div.get_self_label(),
+            )
+            for div in most_favorable_divergence
+        ]
+        probabilities = np.array([prob for prob, _ in prob_label_pairs])
+
+        threshold = np.percentile(probabilities, percentile_threshold * 100)
+
+        selected_labels = [
+            label for prob, label in prob_label_pairs if prob >= threshold
         ]
 
         return selected_labels
@@ -30,7 +43,7 @@ class Region:
         slic_superpixels: cv2.ximgproc.SuperpixelSLIC,
         seed_superpixel_labels: List[int],
         all_feature_vectors: List[Feature],
-        most_favorable_divergences: List[FeatureDivergence],
+        most_favorable_divergence: List[FeatureDivergence],
         mask_superpixel_labels: List[int],
         feature_selection: List[EFeature],
         num_iterations: int = 10,
