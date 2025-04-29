@@ -196,3 +196,17 @@ class Utils:
         if title:
             plt.title(title)
         plt.show()
+
+    @staticmethod
+    def generate_selected_superpixels_image(img_path: Path, slic_labels: np.ndarray,
+                                            selected_labels: List[int]) -> np.ndarray:
+        """Generate an image highlighting selected superpixels by masking."""
+        img_bgr = cv2.imread(str(img_path))
+        if img_bgr is None:
+            img_bgr = cv2.imread(str(IMAGE_PATH))
+
+        output_img = np.zeros_like(img_bgr)
+        selected_pixel_mask = np.isin(slic_labels, selected_labels)
+        output_img[selected_pixel_mask] = img_bgr[selected_pixel_mask]
+        return output_img
+
