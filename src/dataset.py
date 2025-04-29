@@ -210,3 +210,6 @@ class Dataset:
             if not mask_path.exists():
                 print(f"Mask '{mask_path}' not found")
             return None, None
+
+if __name__ == "__main__":
+    Dataset().run()
