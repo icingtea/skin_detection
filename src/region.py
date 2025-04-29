@@ -1,6 +1,6 @@
 
 import numpy as np
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 from dataclasses import dataclass
 import cv2
 from pathlib import Path
@@ -12,7 +12,7 @@ from src.superpixels import SuperpixelExtractor
 class Region:
     def __init__(
             self,
-            feature_selection: List[EFeature],
+            feature_selection: List[EFeature]
     ) -> None:
         self.feature_selection = feature_selection
         self.superpixel_probability = SuperpixelProbability(feature_selection)
