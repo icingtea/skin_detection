@@ -8,6 +8,8 @@ from skimage.filters.rank import entropy
 from skimage.morphology import disk
 from skimage.feature import local_binary_pattern
 from enum import Enum
+from src.utils.project_utils import Utils
+
 
 
 class EFeature(Enum):
@@ -18,12 +20,112 @@ class EFeature(Enum):
 
 
 @dataclass
+class PhiN:
+    label: Tuple[int, int]
+    mean_intensity: np.float64 | None
+    std_intensity: np.float64 | None
+    entropy: np.float64 | None
+    lacunarity_vector: np.float64 | None
+
+    def get_learned_probability(
+        self, feature_selection: List["EFeature"]
+    ) -> np.float64:
+        skin_probability = np.float64(1.0)
+
+        if (
+            EFeature.MEAN_INTENSITY in feature_selection
+            and self.mean_intensity is not None
+        ):
+            skin_probability *= self.mean_intensity
+
+        if (
+            EFeature.STD_INTENSITY in feature_selection
+            and self.std_intensity is not None
+        ):
+            skin_probability *= self.std_intensity
+
+        if EFeature.ENTROPY in feature_selection and self.entropy is not None:
+            skin_probability *= self.entropy
+
+        if (
+            EFeature.LACUNARITY_VECTOR in feature_selection
+            and self.lacunarity_vector is not None
+        ):
+            skin_probability *= self.lacunarity_vector
+
+        return skin_probability
+
+
+@dataclass
 class FeatureDivergence:
     label: Tuple[int, int]
     mean_intensity: np.float64 | None
     std_intensity: np.float64 | None
     entropy: np.float64 | None
     lacunarity_vector: np.float64 | None
+
+    def get_self_label(self) -> int:
+        return self.label[0]
+
+    def get_other_label(self) -> int:
+        return self.label[1]
+
+    def get_phi_n(self) -> "PhiN":
+        return PhiN(
+            label=self.label,
+            mean_intensity=(
+                Utils.phi_k(self.mean_intensity)
+                if self.mean_intensity is not None
+                else None
+            ),
+            std_intensity=(
+                Utils.phi_k(self.std_intensity)
+                if self.std_intensity is not None
+                else None
+            ),
+            entropy=Utils.phi_k(self.entropy) if self.entropy is not None else None,
+            lacunarity_vector=(
+                Utils.phi_k(self.lacunarity_vector)
+                if self.lacunarity_vector is not None
+                else None
+            ),
+        )
+
+    def __add__(self, other: "FeatureDivergence") -> "FeatureDivergence":
+        if not isinstance(other, FeatureDivergence):
+            return NotImplemented
+
+        def add_or_none(a, b):
+            if a is not None and b is not None:
+                return np.float64(a + b)
+            else:
+                return None
+
+        return FeatureDivergence(
+            label=self.label,  # keep the current label
+            mean_intensity=add_or_none(self.mean_intensity, other.mean_intensity),
+            std_intensity=add_or_none(self.std_intensity, other.std_intensity),
+            entropy=add_or_none(self.entropy, other.entropy),
+            lacunarity_vector=add_or_none(
+                self.lacunarity_vector, other.lacunarity_vector
+            ),
+        )
+
+    def div(self, divisor: np.float64) -> "FeatureDivergence":
+        if not isinstance(divisor, np.float64):
+            return NotImplemented
+
+        def div_or_none(val):
+            if val is not None:
+                return np.float64(val / divisor)
+
+        return FeatureDivergence(
+            label=self.label,
+            mean_intensity=div_or_none(self.mean_intensity),
+            std_intensity=div_or_none(self.std_intensity),
+            entropy=div_or_none(self.entropy),
+            lacunarity_vector=div_or_none(self.lacunarity_vector),
+        )
 
 
 @dataclass
@@ -95,6 +197,28 @@ class Feature:
             lacunarity_vector=euclidean(
                 self.lacunarity_vector, other.lacunarity_vector
             ),
+        )
+
+    def get_most_favorable_divergence(
+        self,
+        comparing_feature_vectors: List["Feature"],
+        feature_selection: List[EFeature],
+    ) -> "FeatureDivergence":
+        """
+        Returns divergence vector with highest learned probability against comparing set
+
+        in:
+            comparing_feature_vectors: `List[Feature]`: List of features against which to compare
+
+        out:
+            most_favorable_divergence: `FeatureDivergence`
+        """
+        all_divergences = [
+            self.get_divergence(cfv) for cfv in comparing_feature_vectors
+        ]
+        return max(
+            all_divergences,
+            key=lambda div: div.get_phi_n().get_learned_probability(feature_selection),
         )
 
 
@@ -181,14 +305,7 @@ class FeatureExtractor:
             basic_features: `List[Feature]`: Partial Feature Vectors for each superpixel
         """
         img = cv2.imread(str(img_path), cv2.IMREAD_GRAYSCALE)
-        img = np.array(img, dtype=np.float64)
-
-        square_size = (self.neighborhood_size, self.neighborhood_size)
-
-        def compute_entropy(values):
-            hist, _ = np.histogram(values, bins=256, range=(0, 256), density=True)
-            hist = hist[hist > 0]
-            return -np.sum(hist * np.log(hist))
+        img = np.array(img, dtype=np.uint16)
 
         entropy_map = generic_filter(img, compute_entropy, size=square_size)
 
@@ -257,7 +374,7 @@ class FeatureExtractor:
 
             for (p, r), label_map in label_lbp_maps.items():
                 for k in self.k_values[p]:
-                    bin_map = (label_map == k).astype(np.uint32)
+                    bin_map = (label_map == k).astype(np.uint16)
                     num_zeros = np.sum(bin_map == 0)
                     total_pixels = label_map.size
                     lacunarity = num_zeros / total_pixels
@@ -307,3 +424,31 @@ class FeatureExtractor:
             combined_features.append(combined)
 
         return combined_features
+
+    @staticmethod
+    def separate_feature_vectors(
+        feature_vectors: List[Feature], mask_labels: List[int]
+    ) -> Tuple[List[Feature], List[Feature]]:
+        """
+        Separate mask and non mask feature vectors:
+
+        in:
+            feature_vectors: `List[Feature]`
+            mask_labels: `List[int]`
+
+        out:
+            mask_feature_vectors: `List[Feature]`: List of features inside the mask
+            non_mask_feature_vectors: `List[Feature]`: List of features outside the mask
+        """
+        mask_label_set = set(mask_labels)
+
+        mask_feature_vectors = []
+        non_mask_feature_vectors = []
+
+        for fv in feature_vectors:
+            if fv.label in mask_label_set:
+                mask_feature_vectors.append(fv)
+            else:
+                non_mask_feature_vectors.append(fv)
+
+        return (mask_feature_vectors, non_mask_feature_vectors)

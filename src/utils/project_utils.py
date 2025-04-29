@@ -3,7 +3,6 @@ import numpy as np
 from typing import List, Tuple
 from pathlib import Path
 
-from fontTools.varLib.instancer.solver import EPSILON
 from matplotlib import pyplot as plt
 
 
@@ -121,16 +120,20 @@ class Utils:
         Returns:
             float: Probability value. Approaches 1 as distance -> 0+. approaches 0.5 as distance -> infinity.
         """
-        x = max(0.0, normalized_distance)
+        assert isinstance(
+            normalized_distance, np.float64
+        ), f"Expected np.float64, got {type(normalized_distance)} | {normalized_distance}"
 
-        if x < EPSILON:
-            return 1.0
+        x = np.maximum(0.0, normalized_distance)
+
+        if x < Utils.EPSILON:
+            return np.float64(1.0)
         else:
-            exponent_term = np.float64(-1.0 / x)
+            exponent_term = np.float64(-1.0) / x
             exp_val = np.exp(exponent_term)
-            probability = 1.0 / (1.0 + exp_val)
+            probability = np.float64(1.0) / (np.float64(1.0) + exp_val)
 
-            return float(np.clip(probability, 0.0, 1.0))
+            return np.clip(probability, np.float64(0.0), np.float64(1.0))
 
     @staticmethod
     def morphological_cleanup(
