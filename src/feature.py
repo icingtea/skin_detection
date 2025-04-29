@@ -179,7 +179,7 @@ class FeatureExtractor:
             basic_features: `List[Feature]`: Partial Feature Vectors for each superpixel
         """
         img = cv2.imread(str(img_path), cv2.IMREAD_GRAYSCALE)
-        img = np.array(img, dtype=np.uint32)
+        img = np.array(img, dtype=np.uint16)
 
         entropy_map = entropy(img, disk(self.neighborhood_size))
 
