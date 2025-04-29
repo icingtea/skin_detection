@@ -84,3 +84,39 @@ class SuperpixelExtractor:
                 overlapping_labels.append(label_id)
 
         return overlapping_labels
+
+    def get_neighbouring_superpixel_labels(
+        self, slic_superpixels: cv2.ximgproc.SuperpixelSLIC, label: int
+    ) -> List[int]:
+        """
+        Returns a list of all neighbouring superpixels to superpixel with given label
+
+        in:
+            slic_superpixels: `cv2.ximgproc.SuperpixelSLIC`: Superpixel object
+            label: `int`: Label of superpixel for which to fetch neighbours
+
+        out:
+            neighbour_labels: `List[int]`
+        """
+
+        all_labels = slic_superpixels.getLabels()
+
+        mask: np.ndarray = (all_labels == label).astype(np.uint8)
+
+        mask: np.ndarray = (all_labels == label).astype(np.uint8)
+
+        kernel = np.ones((3, 3), np.uint8)
+        dilated_mask = cv2.dilate(mask, kernel, iterations=1)
+
+        edge_mask = dilated_mask - mask
+
+        neighbour_labels = set()
+        ys, xs = np.where(edge_mask == 1)
+        for y, x in zip(ys, xs):
+            neighbour_label = all_labels[y, x]
+            if neighbour_label == label:
+                continue
+
+            neighbour_labels.add(int(neighbour_label))
+
+        return list(neighbour_labels)
